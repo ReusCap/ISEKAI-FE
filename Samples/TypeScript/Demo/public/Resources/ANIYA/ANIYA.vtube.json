@@ -1627,7 +1627,7 @@
                 "LoadAtCurrentPosition": true
             },
             "Triggers": {
-                "Trigger1": "U",
+                "Trigger1": "C",
                 "Trigger2": "",
                 "Trigger3": "",
                 "ScreenButton": -1

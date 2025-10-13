@@ -36,7 +36,7 @@ export const ViewLogicalMaxTop = 2.0;
 export const ResourcesPath = '../../Resources/';
 
 // 모델 뒤의 배경 이미지 파일
-export const BackImageName = 'image.png';
+export const BackImageName = 'anime-school-background.jpg';
 
 // 기어
 export const GearImageName = 'icon_gear.png';
