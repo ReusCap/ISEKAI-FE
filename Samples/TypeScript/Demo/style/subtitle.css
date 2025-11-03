@@ -1,5 +1,5 @@
-/* 채팅 컨테이너 기본 스타일 */
-#chat-container {
+/* 자막 컨테이너 기본 스타일 */
+#subtitle-container {
   position: absolute; /* live2d-container를 기준으로 위치 설정 */
   bottom: 2%; /* 화면 하단에서 5% 위에 위치 */
   left: 50%;
@@ -18,14 +18,14 @@
   z-index: 10; /* 캔버스 위에 보이도록 설정 */
 }
 
-/* 채팅바가 숨겨졌을 때의 스타일 */
-#chat-container.hidden {
+/* 자막바가 숨겨졌을 때의 스타일 */
+#subtitle-container.hidden {
   opacity: 0;
   pointer-events: none; /* 숨겨졌을 때 클릭 안되게 설정 */
 }
 
 /* 캐릭터 이름 스타일 */
-#chat-name {
+#charactor-name {
   font-weight: bold;
   font-size: 1.3em;
   margin-bottom: 10px;
@@ -35,7 +35,7 @@
   align-items: center;
 }
 
-#chat-name::before {
+#charactor-name::before {
     content: '';
     display: inline-block;
     width: 12px;
@@ -46,8 +46,8 @@
 }
 
 
-/* 채팅 메시지 스타일 */
-#chat-message {
+/* 자막 메시지 스타일 */
+#subtitle-message {
   font-size: 1.1em;
   color: #555;
   line-height: 1.5;
@@ -56,14 +56,14 @@
 /* 입력창 컨테이너 스타일 */
 #input-container {
   position: absolute;
-  bottom: 2%; /* 채팅창보다 약간 아래에 위치 */
+  bottom: 2%; /* 자막바보다 약간 아래에 위치 */
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
   max-width: 950px;
-  z-index: 11; /* 채팅창보다도 위에 오도록 설정 */
+  z-index: 11; /* 자막바보다도 위에 오도록 설정 */
 }
-
+  
 /* 입력 필드 스타일 */
 #emotion-input {
   width: 100%;

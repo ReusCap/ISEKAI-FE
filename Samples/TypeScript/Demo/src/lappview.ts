@@ -15,7 +15,7 @@ import { LAppSprite } from './lappsprite';
 import { TextureInfo } from './lapptexturemanager';
 import { TouchManager } from './touchmanager';
 import { LAppSubdelegate } from './lappsubdelegate';
-import { ChatBar } from './chat/chatbar'; //  ChatBar 클래스 import
+import { SubtitleBar } from './subtitle/subtitlebar'; //  SubtitleBar 클래스 import
 
 /**
  * 그림 수업.
@@ -38,8 +38,8 @@ export class LAppView {
     // 화면 표시 및 이동을 변환하는 행렬
     this._viewMatrix = new CubismViewMatrix();
 
-    // ChatBar 인스턴스 생성
-    this._chatBar = new ChatBar();
+    // SubtitleBar 인스턴스 생성
+    this._subtitleBar = new SubtitleBar();
   }
 
   /**
@@ -296,19 +296,19 @@ export class LAppView {
   }
 
   /**
-   * 채팅 메시지를 표시하는 새로운 메소드 추가
+   * 자막바 메시지를 표시하는 새로운 메소드 추가
    * @param name 캐릭터 이름
    * @param message 메시지 내용
    */
-  public showChatMessage(name: string, message: string): void {
-      this._chatBar.showMessage(name, message);
+  public showSubtitleMessage(name: string, message: string): void {
+      this._subtitleBar.showMessage(name, message);
   }
 
   /**
-   * 채팅을 숨기는 메소드
+   * 자막바를 숨기는 메소드
    */
-  public hideChatMessage(): void {
-      this._chatBar.hide();
+  public hideSubtitleMessage(): void {
+      this._subtitleBar.hide();
   }
   
   _touchManager: TouchManager; // タッチマネージャー
@@ -320,5 +320,5 @@ export class LAppView {
   _changeModel: boolean; // モデル切り替えフラグ
   _isClick: boolean; // クリック中
   private _subdelegate: LAppSubdelegate;
-  private _chatBar: ChatBar; // _chatBar 멤버 변수 추가
+  private _subtitleBar: SubtitleBar; // _subtitleBar 멤버 변수 추가
 }

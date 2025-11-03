@@ -217,7 +217,7 @@ export class LAppDelegate {
           const live2DManager = this._subdelegates.at(0)?.getLive2DManager();
           if (live2DManager) {
             // Live2D 매니저의 메서드를 호출하여 감정 표현과 채팅을 동시에 실행합니다.
-            live2DManager.startChatWithEmotion(
+            live2DManager.startSubtitleWithEmotion(
               '아냐', // 이름
               `"${emotionKeyword}" 표정을 지었다!`, // 표시할 메시지
               emotionKeyword // 사용자가 입력한 감정 키워드
@@ -331,7 +331,7 @@ export class LAppDelegate {
         ite.preIncrement()
       ) {
         // 여기에 원하는 이름과 메시지를 넣으세요.
-        ite.ptr().getView().showChatMessage('아냐', '동해물과 백두산이 마르고 닳도록 하느님이 보우하사 우리나라 만세');
+        ite.ptr().getView().showSubtitleMessage('아냐', '동해물과 백두산이 마르고 닳도록 하느님이 보우하사 우리나라 만세');
       }
       return; // 다른 키 이벤트가 있다면 중복 실행 방지
     }

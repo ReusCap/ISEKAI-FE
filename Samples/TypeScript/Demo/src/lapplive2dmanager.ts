@@ -58,7 +58,7 @@ export class LAppLive2DManager {
    * @param message - 표시할 메시지
    * @param emotion - emotionMap에 정의된 감정 키워드 (예: "슬픔")
    */
-  public startChatWithEmotion(name: string, message: string, emotion: string): void {
+  public startSubtitleWithEmotion(name: string, message: string, emotion: string): void {
     const model: LAppModel = this._models.at(0);
     if (!model) {
       return;
@@ -80,8 +80,8 @@ export class LAppLive2DManager {
       }
     }
 
-    // 3. View의 채팅바에 이름과 메시지를 표시합니다.
-    this._subdelegate.getView().showChatMessage(name, message);
+    // 3. View의 자막바에 이름과 메시지를 표시합니다.
+    this._subdelegate.getView().showSubtitleMessage(name, message);
   }
   /**
    * 현재 장면에서 보관 된 모든 모델을 무료로 제공합니다
