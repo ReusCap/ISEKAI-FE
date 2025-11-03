@@ -15,7 +15,7 @@ import { LAppSprite } from './lappsprite';
 import { TextureInfo } from './lapptexturemanager';
 import { TouchManager } from './touchmanager';
 import { LAppSubdelegate } from './lappsubdelegate';
-import { ChatBar } from './chatbar'; //  ChatBar 클래스 import
+import { ChatBar } from './chat/chatbar'; //  ChatBar 클래스 import
 
 /**
  * 그림 수업.

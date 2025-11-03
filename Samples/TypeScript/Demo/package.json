@@ -10,10 +10,11 @@
     "lint:fix": "eslint --fix",
     "serve": "vite preview --port 5000 --host",
     "clean": "rimraf dist",
-    "vt" : "tsc --noEmit && node copy_resources.js && vite build --mode development && vite preview --port 5000 --host"
+    "vt": "tsc --noEmit && node copy_resources.js && vite build --mode development && vite preview --port 5000 --host"
   },
   "devDependencies": {
     "@eslint/js": "^9.26.0",
+    "dotenv": "^17.2.3",
     "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.0",
