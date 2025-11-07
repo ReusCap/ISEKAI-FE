@@ -49,7 +49,7 @@ export const PowerImageName = 'CloseNormal.png';
 // 디렉토리 이름이 model3.json의 이름과 일치하는지 확인하십시오.
 export const ModelDir: string[] = [
   'ANIYA',
-  'Mao'
+  'HoshinoAi'
 ];
 export const ModelDirSize: number = ModelDir.length;
 
