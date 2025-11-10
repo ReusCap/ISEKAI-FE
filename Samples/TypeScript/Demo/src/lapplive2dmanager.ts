@@ -14,35 +14,102 @@ import { LAppModel } from './lappmodel';
 import { LAppPal } from './lapppal';
 import { LAppSubdelegate } from './lappsubdelegate';
 
-/**
- * 챗봇 감정 키워드와 Live2D 표정(Expression) 이름을 연결하는 맵 객체입니다.
- * 여기에 정의된 키워드(예: "행복")를 챗봇이 보내주면,
- * 해당하는 값(예: 'exp_06')의 표정이 모델에 적용됩니다.
- */
-const emotionMap: { [key: string]: string } = {
-  // --- 긍정적인 감정 ---
-  "두근두근": "exp_06",     // starry_eyes: 반짝이는 별눈, 가장 강한 긍정 표현
-  "씨익": "exp_y",      // grin: 이를 드러내고 활짝 웃는 표정
-  "음흉": "exp_04",     // heh_face: '흥'하는 듯한 만족스러운 표정
+// [key: string]: string은 "어떤 문자열이든 키로 받을 수 있다"는 의미입니다.
+type EmotionMap = { [key: string]: string };
+type KeyMap = { [key: string]: string };
+type VoiceMap = { [key: string]: string };
 
-  // --- 부정적인 감정 ---
-  "슬픔": "exp_02",     // crying: 눈물이 그렁그렁한 표정
-  "오열": "exp_W",      // wailing: 펑펑 우는 표정
-  "분노": "exp_07",     // angry: 화가 난 표정
-  "어이없음": "exp_08",  // speechless: 황당하거나 어이없을 때의 표정
+interface ModelConfig {
+  displayName: string;
+  emotionMap: EmotionMap; // EmotionMap 타입 적용
+  keyMap: KeyMap;         // KeyMap 타입 적용
+  voiceMap?: VoiceMap;   // voiceMap은 선택 사항
+}
 
-  // --- 중립적인 감정 ---
-  "놀람": "exp_03",     // shocked: 깜짝 놀란 표정
-  "경악": "exp_09",     // startled: 더 크게 놀라거나 경악하는 표정
-  "의문": "exp_05",     // question: 물음표가 뜨는 듯한 궁금한 표정
-  "기본": "exp_c",      // neutral: 평상시의 기본 표정
+const modelConfigData: { [key: string]: ModelConfig } = {
+  'ANIYA': {
+    displayName: '아냐',
+    emotionMap:{
+      // --- 긍정적인 감정 ---
+      "두근두근": "exp_06",     // starry_eyes: 반짝이는 별눈, 가장 강한 긍정 표현
+      "씨익": "exp_y",      // grin: 이를 드러내고 활짝 웃는 표정
+      "음흉": "exp_04",     // heh_face: '흥'하는 듯한 만족스러운 표정
 
-  // --- 기타 행동 또는 상태 ---
-  "땅콩모드": "exp_t",   // peanut_mode: 땅콩을 먹는 특별 모션
-  "동공축소": "exp_u",   // small_pupils: 동공이 작아지는 표정
-  "손동작": "exp_01",    // hand_gesture: 손 제스처
-  "옷자랑": "exp_10",    // show_clothes: 다른 옷을 보여주는 상태
-};
+      // --- 부정적인 감정 ---
+      "슬픔": "exp_02",     // crying: 눈물이 그렁그렁한 표정
+      "오열": "exp_W",      // wailing: 펑펑 우는 표정
+      "분노": "exp_07",     // angry: 화가 난 표정
+      "어이없음": "exp_08",  // speechless: 황당하거나 어이없을 때의 표정
+
+      // --- 중립적인 감정 ---
+      "놀람": "exp_03",     // shocked: 깜짝 놀란 표정
+      "경악": "exp_09",     // startled: 더 크게 놀라거나 경악하는 표정
+      "의문": "exp_05",     // question: 물음표가 뜨는 듯한 궁금한 표정
+      "기본": "exp_c",      // neutral: 평상시의 기본 표정
+
+      // --- 기타 행동 또는 상태 ---
+      "땅콩모드": "exp_t",   // peanut_mode: 땅콩을 먹는 특별 모션
+      "동공축소": "exp_u",   // small_pupils: 동공이 작아지는 표정
+      "손동작": "exp_01",    // hand_gesture: 손 제스처
+      "옷자랑": "exp_10",    // show_clothes: 다른 옷을 보여주는 상태
+    },
+    keyMap: {
+      '1': 'exp_01',
+      '2': 'exp_02',
+      '3': 'exp_03',
+      '4': 'exp_04',
+      '5': 'exp_05',
+      '6': 'exp_06',
+      '7': 'exp_07',
+      '8': 'exp_08',
+      '9': 'exp_09',
+      '0': 'exp_10',
+      't': 'exp_t',
+      'u': 'exp_u',
+      'w': 'exp_W',
+      'y': 'exp_y',
+      'c': 'exp_c'
+    },
+    voiceMap:{
+
+    }
+  },
+  // ▼▼▼ [HoshinoAi 설정 추가] ▼▼▼
+  'HoshinoAi':{
+    displayName: '호시노 아이',
+    emotionMap:{
+      // HoshinoAi/expressions/ 폴더의 파일들을 기반으로 합니다.
+      // "ga.exp3.json" -> "ga"
+      // "ku.exp3.json" -> "ku"
+      // ...
+      // 이 "친숙한 이름"(예: "놀람")은 원하시는 대로 수정하세요.
+      "죽음": "ga.exp3",
+      "웃음": "ku.exp3",
+      "뾰로통": "sq.exp3",
+      "메롱": "st.exp3",
+      "음흉": "xinxin.exp3",
+      "마이크": "zs1.exp3",
+      "하트": "zs2.exp3"
+    },
+    keyMap:{
+      // 위 emotionMap의 내부 이름("ga", "ku" 등)을 키보드에 매핑합니다.
+      // 이 키('1', '2' 등)는 원하시는 키로 수정하세요.
+      '1': 'ga.exp3',
+      '2': 'ku.exp3',
+      '3': 'sq.exp3',
+      '4': 'st.exp3',
+      '5': 'xinxin.exp3',
+      '6': 'zs1.exp3',
+      '7': 'zs2.exp3'
+    },
+    voiceMap:{
+      // HoshinoAi 폴더에 음성 파일(.wav)이 없으므로 비워둡니다.
+      // 만약 추가하신다면 'v': 'voices/my_voice.wav' 처럼 설정하세요.
+    }
+  }
+  // ▲▲▲ [여기까지 추가] ▲▲▲
+}
+
 
 
 /**
@@ -65,8 +132,11 @@ export class LAppLive2DManager {
     }
 
     // 1. emotionMap에서 감정 키워드에 해당하는 표정 파일 이름을 찾습니다.
-    const expressionName = emotionMap[emotion];
+    const currentModelName = LAppDefine.ModelDir[this._sceneIndex];
+    const config = modelConfigData[currentModelName];
+    if (!config) return; // 설정이 없으면 종료
 
+    const expressionName = config.emotionMap[emotion];
     // 2. 해당하는 표정이 있으면 모델에 적용하고, 없으면 랜덤 표정을 짓습니다.
     if (expressionName) {
       model.setExpression(expressionName);
@@ -81,6 +151,7 @@ export class LAppLive2DManager {
     }
 
     // 3. View의 자막바에 이름과 메시지를 표시합니다.
+    // (이름은 LAppDelegate에서 getCurrentModelDisplayName()을 호출하여 전달할 것이므로 수정 필요 없음)
     this._subdelegate.getView().showSubtitleMessage(name, message);
   }
   /**
@@ -191,8 +262,18 @@ export class LAppLive2DManager {
     // 디렉토리 이름이 model3.json의 이름과 일치하는지 확인하십시오.
     const model: string = LAppDefine.ModelDir[index];
     const modelPath: string = LAppDefine.ResourcesPath + model + '/';
-    let modelJsonName: string = LAppDefine.ModelDir[index];
-    modelJsonName += '.model3.json';
+
+    // ▼▼▼ [수정] 모델별로 .model3.json 파일 이름을 다르게 설정 ▼▼▼
+    let modelJsonName: string;
+
+    if (model === 'HoshinoAi') {
+      // HoshinoAi 모델의 경우
+      modelJsonName = 'Hoshino_Ai.model3.json';
+    } else {
+      // ANIYA 및 다른 모델의 경우 (기존 규칙)
+      modelJsonName = LAppDefine.ModelDir[index];
+      modelJsonName += '.model3.json';
+    }
 
     this.releaseAllModel();
     const instance = new LAppModel();
@@ -258,86 +339,52 @@ export class LAppLive2DManager {
     LAppPal.printMessage('Motion Finished:');
     console.log(self);
   };
-
+  // ▼▼▼ [추가됨] 헬퍼 메서드 ▼▼▼
   /**
-   * 키보드 입력 처리
+   * 현재 로드된 모델의 표시 이름(displayName)을 반환합니다.
    */
-// 수정중
+  public getCurrentModelDisplayName(): string {
+    const currentModelName = LAppDefine.ModelDir[this._sceneIndex];
+    const config = modelConfigData[currentModelName]; // 파일 상단에 정의된 modelConfigData 참조
+    return config ? config.displayName : 'Unknown'; // 설정이 있으면 이름 반환, 없으면 'Unknown'
+  }
+
+  // ▼▼▼ [수정됨] onKeyDown 메서드 전체 교체 ▼▼▼
+  /**
+   * 키보드 입력 처리 (modelConfigData 사용)
+   */
   public onKeyDown(key: string): void {
     const model: LAppModel = this._models.at(0);
 
-    if (!model) return;
+    // 1. 현재 모델 설정 가져오기
+    const currentModelName = LAppDefine.ModelDir[this._sceneIndex];
+    const config = modelConfigData[currentModelName]; // 파일 상단에 정의된 modelConfigData 참조
 
-    switch (key.toLowerCase()) {
-      // '1' 키로 '0.exp3.json' 파일의 표정을 재생하려면
-      case '1':
-        model.setExpression('exp_01'); // "Name"인 "exp_01"을 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_01');
-        break;
-      // '2' 키로 '1.exp3.json' 파일의 표정을 재생하려면
-      case '2':
-        model.setExpression('exp_02'); // "Name"인 "exp_02"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_02');
-        break;
-      // '3' 키로 '3.exp3.json' 파일의 표정을 재생하려면
-      case '3':
-        model.setExpression('exp_03'); // "Name"인 "exp_03"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_03');
-        break;
-      // '4' 키로 '4.exp3.json' 파일의 표정을 재생하려면
-      case '4':
-        model.setExpression('exp_04'); // "Name"인 "exp_04"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_04');
-        break;
-      // '5' 키로 '5.exp3.json' 파일의 표정을 재생하려면
-      case '5':
-        model.setExpression('exp_05'); // "Name"인 "exp_05"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_05');
-        break;
-      case '6':
-        model.setExpression('exp_06'); // "Name"인 "exp_06"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_06');
-        break;
-      case '7':
-        model.setExpression('exp_07'); // "Name"인 "exp_07"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_07');
-        break;
-      case '8':
-        model.setExpression('exp_08'); // "Name"인 "exp_08"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_08');
-        break;
-      case '9':
-        model.setExpression('exp_09'); // "Name"인 "exp_09"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_09');
-        break;
-      case '0':
-        model.setExpression('exp_10'); // "Name"인 "exp_10"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_10');
-        break;
-      // 't' 키로 't.exp3.json' 파일의 표정을 재생하려면
-      case 't':
-        model.setExpression('exp_t'); // "Name"인 "exp_t"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_t');
-        break;
-      case 'u':
-        model.setExpression('exp_u'); // "Name"인 "exp_u"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_u');
-        break;
-      case 'w':
-        model.setExpression('exp_W'); // "Name"인 "exp_W"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_w');
-        break;
-      case 'y':
-        model.setExpression('exp_y'); // "Name"인 "exp_y"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_y');
-        break;
-      case 'c':
-        model.setExpression('exp_c'); // "Name"인 "exp_c"를 사용
-        LAppPal.printMessage('[APP]Keyboard: Expression exp_c');
-        break;
+    // 모델이나 설정이 없으면 아무것도 하지 않음
+    if (!model || !config) return;
 
+    const lowerKey = key.toLowerCase();
 
-// 수정중   
+    // 2. 모델별 표정 처리 (keyMap)
+    // config.keyMap에 현재 누른 키가 정의되어 있는지 확인
+    if (config.keyMap[lowerKey]) {
+      const expressionId = config.keyMap[lowerKey];
+      model.setExpression(expressionId);
+      LAppPal.printMessage(`[APP]Keyboard: Expression ${expressionId}`);
+      return; // 표정을 실행했으므로 여기서 종료
+    }
+
+    // 3. 모델별 음성 처리 (voiceMap)
+    // config.voiceMap이 존재하고, 현재 누른 키가 정의되어 있는지 확인
+    if (config.voiceMap && config.voiceMap[lowerKey]) {
+      const voicePath = config.voiceMap[lowerKey];
+      model.startVoice(voicePath);
+      LAppPal.printMessage(`[APP]Keyboard: Play Voice '${voicePath}'`);
+      return; // 음성을 실행했으므로 여기서 종료
+    }
+
+    // 4. 모델 공통 키 처리 (모션, 모델 변경 등)
+    switch (lowerKey) {
       case 'm':
         // M키: 랜덤 바디 모션
         model.startRandomMotion(
@@ -368,14 +415,6 @@ export class LAppLive2DManager {
         // N키: 다음 모델
         this.nextScene();
         break;
-
-      case 'v':
-      // V키: 보컬 오디오 재생 + 립싱크
-      model.startVoice('voices/vocals.wav');
-      if (LAppDefine.DebugLogEnable) {
-        LAppPal.printMessage('[APP]Keyboard: Play Voice with Lip Sync');
-      }
-      break;
 
       default:
         // 기타 키는 무시
