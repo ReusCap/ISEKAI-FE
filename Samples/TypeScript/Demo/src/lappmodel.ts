@@ -386,9 +386,19 @@ export class LAppModel extends CubismUserModel {
         CubismLogError('Failed to setupLayout().');
         return;
       }
-
+      
       this._modelSetting.getLayoutMap(layout);
       this._modelMatrix.setupFromLayout(layout);
+      // --- 💡 여기에 코드 추가 ---
+      // this._modelHomeDir는 loadAssets에서 설정된 모델 경로입니다 (예: ../../Resources/HoshinoAi/)
+      // 경로에 'HoshinoAi'가 포함되어 있으면 해당 모델의 스케일만 2배로 키웁니다.
+      if (this._modelHomeDir.includes('HoshinoAi')) {
+        // 숫자를 조절하여 원하는 크기를 맞추세요. (예: 2.0배)
+        this._modelMatrix.scale(2.5, 2.5);
+        this._modelMatrix.translate(0.0, -0.85);
+      }
+      // --- 여기까지 추가 ---
+
       this._state = LoadStep.LoadMotion;
 
       // 콜백
