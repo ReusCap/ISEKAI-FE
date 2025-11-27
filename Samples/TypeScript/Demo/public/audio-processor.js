@@ -1,7 +1,7 @@
 class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.bufferSize = 2048; // 버퍼 크기 (작을수록 지연↓, 부하↑)
+    this.bufferSize = 8192; // 버퍼 크기 (작을수록 지연↓, 부하↑)
     this.buffer = new Float32Array(this.bufferSize);
     this.bufferIndex = 0;
   }
