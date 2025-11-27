@@ -7,6 +7,13 @@ export class WebSocketManager {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private reconnectDelay: number = 3000;
+  private nextStartTime: number = 0;
+  private analyser: AnalyserNode | null = null;
+  private dataArray: Uint8Array | null = null;
+  
+  // 현재 오디오 설정 저장용 (첫 패킷에서 읽은 값 유지)
+  private currentChannels: number = 1;
+  private currentSampleRate: number = 24000;
 
   constructor(private serverUrl: string) {}
   public async initialize(): Promise<void> {
@@ -18,6 +25,7 @@ export class WebSocketManager {
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(this.serverUrl);
+        this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
           console.log('[WebSocket] 연결 성공');
@@ -38,8 +46,11 @@ export class WebSocketManager {
         };
 
         this.ws.onmessage = (event) => {
-          console.log('[WebSocket] 서버 응답:', event.data);
-          this.handleServerMessage(event.data);
+          if (typeof event.data === 'string') {
+            this.handleServerMessage(event.data);
+          } else if (event.data instanceof ArrayBuffer) {
+            this.handleBinaryMessage(event.data);
+          }
         };
       } catch (error) {
         console.error('[WebSocket] 연결 실패:', error);
@@ -82,11 +93,20 @@ export class WebSocketManager {
       console.log('[Audio] 마이크 접근 허용됨');
 
       // AudioContext 생성
-      this.audioContext = new AudioContext({ sampleRate: 16000 });
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext({ sampleRate: 16000 });
+      } else if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+      
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
 
       // AudioWorklet 로드 및 생성
-      await this.audioContext.audioWorklet.addModule('audio-processor.js');
+      try {
+        await this.audioContext.audioWorklet.addModule('audio-processor.js');
+      } catch (e) {
+        // 이미 로드된 경우 무시
+      }
       this.audioWorkletNode = new AudioWorkletNode(
         this.audioContext,
         'audio-processor'
@@ -131,20 +151,156 @@ export class WebSocketManager {
     return int16Array;
   }
 
-  private handleServerMessage(data: any): void {
+  private handleServerMessage(data: string): void {
     try {
-      // JSON 파싱 시도
       const message = JSON.parse(data);
-      console.log('[WebSocket] 파싱된 메시지:', message);
       
+      switch (message.messageType) {
+        case 'SERVER_READY':
+          console.log('[WebSocket] 서버 준비 완료:', message.content.text);
+          break;
+        
+        case 'SUBTITLE':
+          console.log('[Subtitle] 자막 수신:', message.content.text);
+          break;
+
+        default:
+          console.log('[WebSocket] 알 수 없는 메시지:', message);
+      }
     } catch (error) {
-      // JSON이 아닌 경우 그대로 처리
-      console.log('[WebSocket] 원본 메시지:', data);
+      console.error('[WebSocket] 메시지 파싱 실패:', error);
     }
+  }
+
+  // 오디오 큐 관리
+  private audioQueue: Float32Array[] = [];
+
+  private handleBinaryMessage(buffer: ArrayBuffer): void {
+    if (buffer.byteLength === 0) {
+      console.log('[Audio] 수신 스트리밍 종료');
+      return;
+    }
+
+    const view = new DataView(buffer);
+    let pcmData = buffer;
+
+    // WAV 헤더 확인 ('RIFF' = 0x52494646)
+    if (buffer.byteLength >= 44 && view.getUint32(0, false) === 0x52494646) {
+      try {
+        const parsedChannels = view.getUint16(22, true);
+        const parsedSampleRate = view.getUint32(24, true);
+
+        if (parsedChannels > 0 && parsedChannels <= 2 && 
+            parsedSampleRate >= 8000 && parsedSampleRate <= 96000) {
+          
+          this.currentChannels = parsedChannels;
+          this.currentSampleRate = parsedSampleRate;
+          
+          pcmData = buffer.slice(44); // 헤더 제거
+          console.log(`[Audio] WAV 헤더 감지: ${this.currentChannels}ch, ${this.currentSampleRate}Hz`);
+        }
+      } catch (e) {
+        console.warn('[Audio] 헤더 파싱 중 오류 발생. 기존 설정 유지.');
+      }
+    }
+    
+    if (pcmData.byteLength > 0) {
+      this.enqueueAudioData(pcmData);
+    }
+  }
+
+  private enqueueAudioData(buffer: ArrayBuffer): void {
+    if (!this.audioContext) return;
+
+    // 1. Int16 -> Float32 변환
+    const int16Data = new Int16Array(buffer);
+    const float32Data = new Float32Array(int16Data.length);
+    for (let i = 0; i < int16Data.length; i++) {
+      float32Data[i] = int16Data[i] / 32768.0;
+    }
+
+    // 2. 실시간 재생 큐에 추가
+    this.audioQueue.push(float32Data);
+
+    // 3. 즉시 처리
+    this.processAudioQueue();
+  }
+
+  private processAudioQueue(): void {
+    if (!this.audioContext) return;
+
+    // 큐에 있는 모든 데이터를 꺼내서 스케줄링
+    while (this.audioQueue.length > 0) {
+      const float32Data = this.audioQueue.shift();
+      if (!float32Data) break;
+
+      this.schedulePlayback(float32Data);
+    }
+  }
+
+  private schedulePlayback(float32Data: Float32Array): void {
+    if (!this.audioContext) return;
+
+    const currentTime = this.audioContext.currentTime;
+
+    // 단순화된 스케줄링:
+    // 1. 예약된 시간이 미래면? -> 예약된 시간에 재생 (매끄러움)
+    // 2. 예약된 시간이 과거면(늦었으면)? -> 지금 당장 재생 (끊김 최소화)
+    const startTime = Math.max(currentTime, this.nextStartTime);
+
+    const channels = this.currentChannels;
+    const frameCount = float32Data.length / channels;
+    const audioBuffer = this.audioContext.createBuffer(channels, frameCount, this.currentSampleRate);
+
+    // 채널 분리 (De-interleaving)
+    for (let channel = 0; channel < channels; channel++) {
+      const channelData = audioBuffer.getChannelData(channel);
+      for (let i = 0; i < frameCount; i++) {
+        channelData[i] = float32Data[i * channels + channel];
+      }
+    }
+
+    const source = this.audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+
+    // Analyser 연결
+    if (!this.analyser) {
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    }
+    
+    // GainNode(페이드) 제거하고 직접 연결 (지지직거림 방지)
+    source.connect(this.analyser);
+    this.analyser.connect(this.audioContext.destination);
+
+    source.start(startTime);
+    
+    // 다음 재생 시간 갱신
+    this.nextStartTime = startTime + audioBuffer.duration;
   }
 
   public getIsConnected(): boolean {
     return this.isConnected && this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  public getCurrentRms(): number {
+    if (!this.analyser || !this.dataArray) {
+      return 0;
+    }
+
+    this.analyser.getByteFrequencyData(this.dataArray);
+
+    // RMS 계산 (단순 평균)
+    let sum = 0;
+    for (let i = 0; i < this.dataArray.length; i++) {
+      sum += this.dataArray[i];
+    }
+    
+    // 0~1 사이 값으로 정규화 (256은 바이트 최대값)
+    // 감도 조절을 위해 값을 조금 키움 (* 2.5)
+    const average = sum / this.dataArray.length;
+    return (average / 256) * 2.5;
   }
 
   public dispose(): void {
