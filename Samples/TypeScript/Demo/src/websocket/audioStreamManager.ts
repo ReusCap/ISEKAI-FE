@@ -15,10 +15,17 @@ export class AudioStreamManager {
   private currentChannels: number = 1;
   private currentSampleRate: number = 24000;
 
+  // VAD (Voice Activity Detection) 설정
+  private vadThreshold: number = 0.015; // 음성 감지 임계값
+  private noiseGate: number = 0.005; // 노이즈 게이트
+  private isVoiceActive: boolean = false;
+  private energyHistory: number[] = [];
+  private readonly historySize: number = 10;
+
   constructor() {}
 
   /**
-   * 마이크 스트리밍 시작 (송신)
+   * 마이크 스트리밍 시작 (송신) - VAD + 노이즈 게이트 적용
    * @param onAudioData - 오디오 데이터를 받을 콜백 함수
    */
   public async startMicrophoneStreaming(
@@ -38,7 +45,7 @@ export class AudioStreamManager {
           sampleRate: 16000,
           channelCount: 1,
           echoCancellation: true,
-          noiseSuppression: true,
+          noiseSuppression: true, // 브라우저 내장 노이즈 억제
           autoGainControl: true,
         },
       });
@@ -49,32 +56,112 @@ export class AudioStreamManager {
       this.sendAudioContext = new AudioContext({ sampleRate: 16000 });
       const source = this.sendAudioContext.createMediaStreamSource(this.mediaStream);
 
-      // AudioWorklet 로드
+      // VAD AudioWorklet 로드
       try {
-        await this.sendAudioContext.audioWorklet.addModule('audio-processor.js');
+        await this.sendAudioContext.audioWorklet.addModule('vad-audio-processor.js');
       } catch (e) {
-        // 이미 로드된 경우 무시
+        console.warn('[Audio] AudioWorklet 로드 실패, 재시도...');
+        await this.sendAudioContext.audioWorklet.addModule('vad-audio-processor.js');
       }
 
       this.audioWorkletNode = new AudioWorkletNode(
         this.sendAudioContext,
-        'audio-processor'
+        'vad-audio-processor'
       );
 
-      // 오디오 데이터 수신 및 콜백 호출
+      // VAD 설정 전송
+      this.audioWorkletNode.port.postMessage({
+        type: 'config',
+        vadThreshold: this.vadThreshold,
+        noiseGate: this.noiseGate
+      });
+
+      // 오디오 데이터 및 통계 수신
       this.audioWorkletNode.port.onmessage = (event) => {
-        const audioData: Float32Array = event.data;
-        onAudioData(audioData);
+        if (event.data.type === 'stats') {
+          this.isVoiceActive = event.data.isActive;
+          this.updateEnergyHistory(event.data.energy);
+        } else if (event.data.type === 'audio') {
+          // 음성이 감지되고 에너지가 충분한 경우에만 전송
+          if (this.shouldTransmit()) {
+            onAudioData(event.data.buffer);
+          }
+        }
       };
 
       // 오디오 노드 연결 (destination은 연결하지 않음 - 에코 방지)
       source.connect(this.audioWorkletNode);
 
-      console.log('[Audio] 마이크 스트리밍 시작');
+      console.log('[Audio] 마이크 스트리밍 시작 (VAD + 노이즈 게이트 활성화)');
     } catch (error) {
       console.error('[Audio] 마이크 스트리밍 시작 실패:', error);
       throw error;
     }
+  }
+
+  /**
+   * 에너지 히스토리 업데이트
+   */
+  private updateEnergyHistory(energy: number): void {
+    this.energyHistory.push(energy);
+    if (this.energyHistory.length > this.historySize) {
+      this.energyHistory.shift();
+    }
+  }
+
+  /**
+   * 전송 여부 결정 (지능형 필터링)
+   */
+  private shouldTransmit(): boolean {
+    if (!this.isVoiceActive) {
+      return false;
+    }
+
+    if (this.energyHistory.length === 0) {
+      return true;
+    }
+
+    const avgEnergy = this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length;
+    return avgEnergy > this.noiseGate;
+  }
+
+  /**
+   * VAD 및 노이즈 게이트 설정 조정
+   */
+  public setFilterConfig(vadThreshold?: number, noiseGate?: number): void {
+    if (vadThreshold !== undefined) {
+      this.vadThreshold = vadThreshold;
+    }
+    if (noiseGate !== undefined) {
+      this.noiseGate = noiseGate;
+    }
+
+    this.audioWorkletNode?.port.postMessage({
+      type: 'config',
+      vadThreshold: this.vadThreshold,
+      noiseGate: this.noiseGate
+    });
+
+    console.log(`[Audio] 필터 설정: VAD=${this.vadThreshold}, Gate=${this.noiseGate}`);
+  }
+
+  /**
+   * 현재 음성 활동 상태 반환
+   */
+  public getVoiceStats(): {
+    isActive: boolean;
+    currentEnergy: number;
+    avgEnergy: number;
+  } {
+    const avgEnergy = this.energyHistory.length > 0
+      ? this.energyHistory.reduce((a, b) => a + b, 0) / this.energyHistory.length
+      : 0;
+
+    return {
+      isActive: this.isVoiceActive,
+      currentEnergy: this.energyHistory[this.energyHistory.length - 1] || 0,
+      avgEnergy
+    };
   }
 
   /**
@@ -118,7 +205,6 @@ export class AudioStreamManager {
 
   /**
    * 서버로부터 받은 바이너리 데이터를 재생 큐에 추가
-   * @param buffer - 서버로부터 받은 ArrayBuffer (WAV 또는 PCM)
    */
   public handleReceivedAudio(buffer: ArrayBuffer): void {
     if (buffer.byteLength === 0) {
@@ -129,7 +215,7 @@ export class AudioStreamManager {
     const view = new DataView(buffer);
     let pcmData = buffer;
 
-    // WAV 헤더 확인 ('RIFF' = 0x52494646)
+    // WAV 헤더 확인
     if (buffer.byteLength >= 44 && view.getUint32(0, false) === 0x52494646) {
       try {
         const parsedChannels = view.getUint16(22, true);
@@ -144,7 +230,7 @@ export class AudioStreamManager {
           this.currentChannels = parsedChannels;
           this.currentSampleRate = parsedSampleRate;
 
-          pcmData = buffer.slice(44); // 헤더 제거
+          pcmData = buffer.slice(44);
           console.log(
             `[Audio] WAV 헤더 감지: ${this.currentChannels}ch, ${this.currentSampleRate}Hz`
           );
@@ -159,31 +245,21 @@ export class AudioStreamManager {
     }
   }
 
-  /**
-   * PCM 데이터를 Float32로 변환하여 재생 큐에 추가
-   */
   private enqueueAudioData(buffer: ArrayBuffer): void {
     if (!this.receiveAudioContext) {
       this.initializePlayback();
     }
 
-    // Int16 -> Float32 변환
     const int16Data = new Int16Array(buffer);
     const float32Data = new Float32Array(int16Data.length);
     for (let i = 0; i < int16Data.length; i++) {
       float32Data[i] = int16Data[i] / 32768.0;
     }
 
-    // 큐에 추가
     this.audioQueue.push(float32Data);
-
-    // 즉시 처리
     this.processAudioQueue();
   }
 
-  /**
-   * 오디오 큐 처리 - 큐에 있는 데이터를 꺼내서 재생 스케줄링
-   */
   private processAudioQueue(): void {
     if (!this.receiveAudioContext) return;
 
@@ -195,9 +271,6 @@ export class AudioStreamManager {
     }
   }
 
-  /**
-   * 오디오 버퍼를 스케줄링하여 재생
-   */
   private schedulePlayback(float32Data: Float32Array): void {
     if (!this.receiveAudioContext) return;
 
@@ -212,7 +285,6 @@ export class AudioStreamManager {
       this.currentSampleRate
     );
 
-    // 채널 분리 (De-interleaving)
     for (let channel = 0; channel < channels; channel++) {
       const channelData = audioBuffer.getChannelData(channel);
       for (let i = 0; i < frameCount; i++) {
@@ -223,7 +295,6 @@ export class AudioStreamManager {
     const source = this.receiveAudioContext.createBufferSource();
     source.buffer = audioBuffer;
 
-    // Analyser 연결
     if (this.analyser) {
       source.connect(this.analyser);
       this.analyser.connect(this.receiveAudioContext.destination);
@@ -232,14 +303,9 @@ export class AudioStreamManager {
     }
 
     source.start(startTime);
-
-    // 다음 재생 시간 갱신
     this.nextStartTime = startTime + audioBuffer.duration;
   }
 
-  /**
-   * 현재 재생 중인 오디오의 RMS 값 반환 (0~1)
-   */
   public getCurrentRms(): number {
     if (!this.analyser || !this.dataArray) {
       return 0;
@@ -253,19 +319,14 @@ export class AudioStreamManager {
     }
 
     const average = sum / this.dataArray.length;
-    return (average / 256) * 2.5; // 감도 조절
+    return (average / 256) * 2.5;
   }
 
-  /**
-   * 모든 리소스 정리
-   */
   public async dispose(): Promise<void> {
     console.log('[Audio] 리소스 정리 중...');
 
-    // 송신 관련 정리
     await this.stopMicrophoneStreaming();
 
-    // 수신 관련 정리
     if (this.analyser) {
       this.analyser.disconnect();
       this.analyser = null;
