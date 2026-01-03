@@ -1,31 +1,31 @@
 import styled from '@emotion/styled';
+import { useFormContext } from 'react-hook-form';
 import Live2DViewer from '@/components/Live2DViewer';
 import { useGenerateCharacter } from '../hooks';
+import { CreateChatFormData } from '../types/form';
 
-interface AppearanceInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
+export const AppearanceInput = () => {
+  const { register, watch, setValue } = useFormContext<CreateChatFormData>();
+  const { mutate, data, isPending } = useGenerateCharacter();
 
-export const AppearanceInput = ({ value, onChange }: AppearanceInputProps) => {
-  const { mutate, data, isPending, error } = useGenerateCharacter();
+  const appearanceValue = watch('appearance');
 
   const handlePreview = () => {
-    if (!value.trim()) return;
-    mutate(value);
+    if (!appearanceValue?.trim()) return;
+    mutate(appearanceValue, {
+      onSuccess: response => {
+        setValue('live2dFileName', response.live2dFileName);
+      }
+    });
   };
 
   return (
     <FormGroup>
       <FormLabel>외모</FormLabel>
-      <FormTextarea
-        placeholder="캐릭터 외모를 묘사해주세요."
-        value={value}
-        onChange={e => onChange(e.target.value)}
-      />
+      <FormTextarea placeholder="캐릭터 외모를 묘사해주세요." {...register('appearance')} />
       <PreviewSection>
         <PreviewHeader>
-          <PreviewBtn onClick={handlePreview} disabled={isPending || !value.trim()}>
+          <PreviewBtn onClick={handlePreview} disabled={isPending || !appearanceValue?.trim()}>
             {isPending ? '생성 중...' : '미리보기'}
           </PreviewBtn>
         </PreviewHeader>

@@ -1,17 +1,24 @@
 import styled from '@emotion/styled';
+import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
 import { VoiceType, VOICE_OPTIONS } from '../types';
+import { CreateChatFormData } from '../types/form';
 
-interface VoiceSelectorProps {
-  selectedVoice: VoiceType;
-  playingVoice: VoiceType | null;
-  onVoiceSelect: (voice: VoiceType) => void;
-}
+export const VoiceSelector = () => {
+  const { watch, setValue } = useFormContext<CreateChatFormData>();
+  const [playingVoice, setPlayingVoice] = useState<VoiceType | null>(null);
 
-export const VoiceSelector = ({
-  selectedVoice,
-  playingVoice,
-  onVoiceSelect
-}: VoiceSelectorProps) => {
+  const selectedVoice = watch('voice') as VoiceType;
+
+  const handleVoiceSelect = (voiceType: VoiceType) => {
+    if (playingVoice === voiceType) {
+      setPlayingVoice(null);
+    } else {
+      setPlayingVoice(voiceType);
+      setValue('voice', voiceType);
+    }
+  };
+
   return (
     <FormGroup>
       <FormLabel>목소리</FormLabel>
@@ -19,8 +26,9 @@ export const VoiceSelector = ({
         {VOICE_OPTIONS.map(voice => (
           <VoiceBtn
             key={voice.type}
+            type="button"
             $active={selectedVoice === voice.type}
-            onClick={() => onVoiceSelect(voice.type)}
+            onClick={() => handleVoiceSelect(voice.type)}
           >
             <VoiceIcon>
               {playingVoice === voice.type ? (

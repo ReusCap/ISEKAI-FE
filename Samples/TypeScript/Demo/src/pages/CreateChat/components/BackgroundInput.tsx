@@ -1,30 +1,30 @@
 import styled from '@emotion/styled';
+import { useFormContext } from 'react-hook-form';
 import { useGenerateBackground } from '../hooks';
+import { CreateChatFormData } from '../types/form';
 
-interface BackgroundInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
+export const BackgroundInput = () => {
+  const { register, watch, setValue } = useFormContext<CreateChatFormData>();
+  const { mutate, data, isPending } = useGenerateBackground();
 
-export const BackgroundInput = ({ value, onChange }: BackgroundInputProps) => {
-  const { mutate, data, isPending, error } = useGenerateBackground();
+  const backgroundValue = watch('background');
 
   const handlePreview = () => {
-    if (!value.trim()) return;
-    mutate(value);
+    if (!backgroundValue?.trim()) return;
+    mutate(backgroundValue, {
+      onSuccess: response => {
+        setValue('backgroundFileName', response.backgroundFileName);
+      }
+    });
   };
 
   return (
     <FormGroup>
       <FormLabel>배경</FormLabel>
-      <FormTextarea
-        placeholder="배경화면을 설명해주세요."
-        value={value}
-        onChange={e => onChange(e.target.value)}
-      />
+      <FormTextarea placeholder="배경화면을 설명해주세요." {...register('background')} />
       <PreviewSection>
         <PreviewHeader>
-          <PreviewBtn onClick={handlePreview} disabled={isPending || !value.trim()}>
+          <PreviewBtn onClick={handlePreview} disabled={isPending || !backgroundValue?.trim()}>
             {isPending ? '생성 중...' : '미리보기'}
           </PreviewBtn>
         </PreviewHeader>

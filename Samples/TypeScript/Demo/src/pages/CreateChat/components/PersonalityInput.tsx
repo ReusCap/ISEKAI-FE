@@ -1,19 +1,14 @@
 import styled from '@emotion/styled';
+import { useFormContext } from 'react-hook-form';
+import { CreateChatFormData } from '../types/form';
 
-interface PersonalityInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
+export const PersonalityInput = () => {
+  const { register } = useFormContext<CreateChatFormData>();
 
-export const PersonalityInput = ({ value, onChange }: PersonalityInputProps) => {
   return (
     <FormGroup>
       <FormLabel>성격</FormLabel>
-      <FormTextarea
-        placeholder="캐릭터 성격을 설명해주세요."
-        value={value}
-        onChange={e => onChange(e.target.value)}
-      />
+      <FormTextarea placeholder="캐릭터 성격을 설명해주세요." {...register('personality')} />
     </FormGroup>
   );
 };

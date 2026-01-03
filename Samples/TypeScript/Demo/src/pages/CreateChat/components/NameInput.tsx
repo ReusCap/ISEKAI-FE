@@ -1,12 +1,15 @@
 import styled from '@emotion/styled';
+import { useFormContext } from 'react-hook-form';
+import { CreateChatFormData } from '../types/form';
 
 interface NameInputProps {
-  value: string;
-  onChange: (value: string) => void;
   maxLength?: number;
 }
 
-export const NameInput = ({ value, onChange, maxLength = 20 }: NameInputProps) => {
+export const NameInput = ({ maxLength = 20 }: NameInputProps) => {
+  const { register, watch } = useFormContext<CreateChatFormData>();
+  const nameValue = watch('name') || '';
+
   return (
     <FormGroup>
       <FormLabel>이름</FormLabel>
@@ -14,12 +17,14 @@ export const NameInput = ({ value, onChange, maxLength = 20 }: NameInputProps) =
         <FormInput
           type="text"
           placeholder="캐릭터 이름을 설정해주세요."
-          value={value}
-          onChange={e => onChange(e.target.value.slice(0, maxLength))}
+          {...register('name', {
+            maxLength,
+            setValueAs: v => v.slice(0, maxLength)
+          })}
           maxLength={maxLength}
         />
         <CharCount>
-          {value.length} /{maxLength}
+          {nameValue.length} /{maxLength}
         </CharCount>
       </InputWrapper>
     </FormGroup>
