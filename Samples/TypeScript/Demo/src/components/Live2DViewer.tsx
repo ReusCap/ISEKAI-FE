@@ -2,53 +2,41 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import JSZip from 'jszip';
 import { useLive2D } from '../hooks/useLive2D';
+import { useLive2DAudio } from '../hooks/useLive2DAudio'; // 추가
+import { LAppDelegate } from '../live2d-library/lappdelegate'; // 추가
 import { Live2DModelConfig } from '../live2d-library/lapplive2dmanager';
 
 interface Live2DViewerProps {
-  modelUrl: string; // ZIP URL
+  modelUrl: string;
   modelConfig?: Live2DModelConfig;
   webSocketUrl?: string;
 }
 
 const Live2DViewer = ({ modelUrl, modelConfig, webSocketUrl }: Live2DViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
   const [resources, setResources] = useState<Map<string, ArrayBuffer> | undefined>(undefined);
   const [modelInfo, setModelInfo] = useState<{ path: string; fileName: string } | null>(null);
 
-  // 1. Fetch and Parse ZIP
+  // 1. WebSocket 및 오디오 초기화
+  const { isConnected, getCurrentRms } = useLive2DAudio(webSocketUrl || '');
+
+  // 2. ZIP 파일 로드 (기존 로직 동일)
   useEffect(() => {
     const fetchZip = async () => {
       if (!modelUrl) return;
-
       try {
-        console.log(`[Live2DViewer] Fetching zip: ${modelUrl}`);
         const response = await axios.get(modelUrl, { responseType: 'arraybuffer' });
-        const zipData = response.data;
-        const zip = await JSZip.loadAsync(zipData);
-
+        const zip = await JSZip.loadAsync(response.data);
         const resMap = new Map<string, ArrayBuffer>();
         let fullModel3Path = '';
 
-        const filePaths = Object.keys(zip.files);
-        for (const filePath of filePaths) {
-          const file = zip.files[filePath];
-          if (file.dir) continue;
-
-          const content = await file.async('arraybuffer');
+        for (const filePath of Object.keys(zip.files)) {
+          if (zip.files[filePath].dir) continue;
+          const content = await zip.files[filePath].async('arraybuffer');
           resMap.set(filePath, content);
-
-          if (filePath.endsWith('.model3.json')) {
-            fullModel3Path = filePath;
-          }
+          if (filePath.endsWith('.model3.json')) fullModel3Path = filePath;
         }
 
-        if (!fullModel3Path) {
-          console.error('[Live2DViewer] No .model3.json found in zip.');
-          return;
-        }
-
-        // Determine root directory and filename
         let rootDir = '';
         let fileName = fullModel3Path;
         const parts = fullModel3Path.split('/');
@@ -63,11 +51,10 @@ const Live2DViewer = ({ modelUrl, modelConfig, webSocketUrl }: Live2DViewerProps
         console.error('[Live2DViewer] Failed to load zip:', error);
       }
     };
-
     fetchZip();
   }, [modelUrl]);
 
-  // 2. Use Live2D Hook
+  // 3. Live2D 매니저 초기화
   const { manager } = useLive2D({
     containerRef,
     modelConfig,
@@ -75,6 +62,20 @@ const Live2DViewer = ({ modelUrl, modelConfig, webSocketUrl }: Live2DViewerProps
     modelFileName: modelInfo?.fileName || '',
     resources: resources
   });
+
+  // 4. 실시간 립싱크 적용
+  useEffect(() => {
+    if (!manager || !isConnected) return;
+
+    const updateLipSync = () => {
+      const rms = getCurrentRms(); // 실시간 볼륨 값
+      LAppDelegate.getInstance().setLipSyncValue(rms); // 모델 입 모양 업데이트
+      requestAnimationFrame(updateLipSync);
+    };
+
+    const requestId = requestAnimationFrame(updateLipSync);
+    return () => cancelAnimationFrame(requestId);
+  }, [manager, isConnected, getCurrentRms]);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }} />;
 };

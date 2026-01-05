@@ -13,11 +13,13 @@ import { LAppDelegate } from './lappdelegate';
 import { LAppPal } from './lapppal';
 import { TouchManager } from './touchmanager';
 import { LAppSubdelegate } from './lappsubdelegate';
+import { ChatManager } from './chat/chatmanager'; // 추가
 
 /**
  * 그림 수업.
  */
 export class LAppView {
+  private _chatManager: ChatManager; // 추가
   /**
    * 생성자
    */
@@ -32,6 +34,8 @@ export class LAppView {
 
     // 화면 표시 및 이동을 변환하는 행렬
     this._viewMatrix = new CubismViewMatrix();
+
+    this._chatManager = new ChatManager(); // 인스턴스 생성
   }
 
   /**
@@ -73,6 +77,11 @@ export class LAppView {
     );
   }
 
+  // WebSocketManager에서 메시지를 표시하기 위해 필요
+  public getChatManager(): ChatManager {
+    return this._chatManager;
+  }
+  
   /**
    * 풀어 주다
    */
