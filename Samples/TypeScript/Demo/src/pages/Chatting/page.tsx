@@ -82,7 +82,7 @@ const ChattingPage = () => {
       {/* 3. Live2D 컨테이너 (좌측 50%) */}
       <Live2DContainer>
         <Live2DWrapper>
-          <Live2DViewer modelUrl="/Resources/ANIYA.zip" getLipSyncValue={getCurrentRms} />
+          <Live2DViewer modelUrl="/Resources/live2d_model.zip" getLipSyncValue={getCurrentRms} />
         </Live2DWrapper>
       </Live2DContainer>
 
