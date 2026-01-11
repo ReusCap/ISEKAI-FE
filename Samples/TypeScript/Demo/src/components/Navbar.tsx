@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { COLORS, LAYOUT, FONTS } from '@/constants';
-import { initiateKakaoLogin, kakaoLogout, isLoggedIn } from '@/utils';
+import { initiateKakaoLogin, kakaoLogout, isLoggedIn } from '@/utils/kakaoAuth';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
