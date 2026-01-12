@@ -20,7 +20,7 @@ export const Navbar: React.FC = () => {
   const loggedIn = isLoggedIn();
 
   const handleLogin = () => {
-    initiateKakaoLogin();
+    initiateKakaoLogin(location.pathname);
   };
 
   const handleLogout = () => {
