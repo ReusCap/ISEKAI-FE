@@ -8,13 +8,15 @@ interface Live2DViewerProps {
   getLipSyncValue?: () => number;
   expression?: string;           // 감정 (예: "행복", "슬픔")
   motion?: string;            // 모션 이름 (예: "인사", "끄덕임")
+  zoom?: number;              // 줌 레벨 (1.0 = 기본, 2.0 = 200% 확대)
 }
 
 const Live2DViewer = ({ 
   modelUrl, 
   getLipSyncValue, 
   expression="중립",
-  motion="대기"
+  motion="대기",
+  zoom=1.0
 }: Live2DViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [resources, setResources] = useState<Map<string, ArrayBuffer> | undefined>(undefined);
@@ -124,6 +126,13 @@ const Live2DViewer = ({
       manager.playMappedMotion(motion);
     }
   }, [manager, motion]);
+
+  // 줌 레벨 적용 (zoom prop이 변경될 때)
+  useEffect(() => {
+    if (manager) {
+      manager.setZoom(zoom);
+    }
+  }, [manager, zoom]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

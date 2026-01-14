@@ -248,7 +248,23 @@ export class LAppLive2DManager {
     }
   }
 
+  /**
+   * 줌 레벨 설정 (확대/축소)
+   * @param level 줌 레벨 (1.0 = 기본, 1.5 = 150% 확대, 2.0 = 200% 확대)
+   */
+  public setZoom(level: number): void {
+    this._zoomLevel = Math.max(0.5, Math.min(4.0, level)); // 0.5 ~ 3.0 범위 제한
+  }
+
+  /**
+   * 현재 줌 레벨 반환
+   */
+  public getZoom(): number {
+    return this._zoomLevel;
+  }
+
   private _modelConfig: Live2DModelConfig | null = null;
+  private _zoomLevel: number = 1.0;  // 기본 줌 레벨
 
   private releaseAllModel(): void {
     this._models.clear();
@@ -313,7 +329,7 @@ export class LAppLive2DManager {
     if (model.getModel()) {
       if (model.getModel().getCanvasWidth() > 1.0 && width < height) {
         // 수직 창에 긴 수평 모델을 표시 할 때 모델의 너비 크기에 따라 스케일을 계산합니다.
-        model.getModelMatrix().setWidth(2.0);
+        model.getModelMatrix().setWidth(1.0);
         projection.scale(1.0, width / height);
       } else {
         projection.scale(height / width, 1.0);
@@ -322,6 +338,14 @@ export class LAppLive2DManager {
       // 필요한 경우 여기에 곱하십시오
       if (this._viewMatrix != null) {
         projection.multiplyByMatrix(this._viewMatrix);
+      }
+
+      // 줌 적용: 모든 다른 변환 후 마지막에 적용 (해상도 유지)
+      if (this._zoomLevel !== 1.0) {
+        // 위쪽 기준 확대를 위해 Y축 이동 후 스케일
+        const offsetY = -(this._zoomLevel - 1.0) * 0.75;
+        projection.translateY(offsetY);
+        projection.scaleRelative(this._zoomLevel, this._zoomLevel);
       }
     }
 

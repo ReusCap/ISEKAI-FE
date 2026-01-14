@@ -5,6 +5,8 @@ import Live2DViewer from '@/components/Live2DViewer';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import ChatMessages from '@/components/ChatMessages';
 import ChatInput from '@/components/ChatInput';
+import OverlayButton from '@/components/OverlayButton';
+import OverlayContainer from '@/components/OverlayContainer';
 import { FONTS } from '@/constants';
 import { ChatMessage } from '@/types/chat';
 
@@ -15,6 +17,9 @@ const ChattingPage = () => {
   // React 상태로 채팅 메시지 관리
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStarted, setIsStarted] = useState(true);
+  
+  // 줌 레벨 상태 (1.0 = 기본, 1.5 = 150% 확대, 2.0 = 200% 확대)
+  const [zoomLevel, setZoomLevel] = useState(1.0);
 
   // 메시지 추가 헬퍼 함수
   const addMessage = useCallback((type: 'user' | 'ai', text: string) => {
@@ -52,6 +57,15 @@ const ChattingPage = () => {
     [addMessage]
   );
 
+  // 줌 인/아웃 핸들러
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(prev + 0.5, 4.0));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => Math.max(prev - 0.5, 1.0));
+  }, []);
+
   // 마이크 권한 체크
   useEffect(() => {
     const checkPermission = async () => {
@@ -75,18 +89,33 @@ const ChattingPage = () => {
       <Background />
 
       {/* 2. 뒤로가기 버튼 */}
-      <BackButton onClick={() => navigate(-1)}>
-        <img src="/Resources/arrow-back.png" alt="뒤로가기" />
-      </BackButton>
+      <BackButtonWrapper>
+        <OverlayButton onClick={() => navigate(-1)} size="md">
+          <img src="/Resources/arrow-back.png" alt="뒤로가기" />
+        </OverlayButton>
+      </BackButtonWrapper>
 
-      {/* 3. Live2D 컨테이너 (좌측 50%) */}
+      {/* 3. 줌 컨트롤 버튼 */}
+      <ZoomControlsWrapper>
+        <OverlayContainer padding="md">
+          <OverlayButton onClick={handleZoomIn} size="sm">+</OverlayButton>
+          <ZoomLevel>{Math.round(zoomLevel * 100)}%</ZoomLevel>
+          <OverlayButton onClick={handleZoomOut} size="sm" disabled={zoomLevel <= 1.0}>−</OverlayButton>
+        </OverlayContainer>
+      </ZoomControlsWrapper>
+
+      {/* 4. Live2D 컨테이너 (좌측 50%) */}
       <Live2DContainer>
         <Live2DWrapper>
-          <Live2DViewer modelUrl="/Resources/live2d_model.zip" getLipSyncValue={getCurrentRms} />
+          <Live2DViewer 
+            modelUrl="/Resources/live2d_model.zip" 
+            getLipSyncValue={getCurrentRms} 
+            zoom={zoomLevel}
+          />
         </Live2DWrapper>
       </Live2DContainer>
 
-      {/* 4. 채팅 UI (우측 50%) - React 컴포넌트 사용 */}
+      {/* 5. 채팅 UI (우측 50%) - React 컴포넌트 사용 */}
       <ChatUIWrapper>
         <ChatMessages messages={messages} />
         <ChatInput
@@ -125,20 +154,11 @@ const Background = styled.div`
   z-index: 1;
 `;
 
-const BackButton = styled.button`
+const BackButtonWrapper = styled.div`
   position: absolute;
   top: 20px;
   left: 20px;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.3);
-  border: none;
-  border-radius: 50%;
-  padding: 10px;
-  display: flex;
-  img {
-    width: 24px;
-    height: 24px;
-  }
 `;
 
 const Live2DContainer = styled.div`
@@ -169,4 +189,18 @@ const ChatUIWrapper = styled.div`
   flex-direction: column;
   padding: 40px 80px;
   box-sizing: border-box;
+`;
+
+const ZoomControlsWrapper = styled.div`
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  z-index: 10;
+`;
+
+const ZoomLevel = styled.span`
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 `;
