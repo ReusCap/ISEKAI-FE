@@ -30,6 +30,7 @@ export interface Live2DModelConfig {
   voiceMap?: { [key: string]: string };
   motionMap?: { [key: string]: MotionMapItem };  // 모션 매핑
   layout?: ModelLayout;
+  setparameter?: { [key: string]: number };  // 기본 파라미터 (감정 변경 시에도 유지)
 }
 
 // ... existing code ...
@@ -194,6 +195,22 @@ export class LAppLive2DManager {
   }
 
   /**
+   * 기본 파라미터 설정 (config.json의 setparameter용)
+   * 감정 변경 시에도 유지되는 영구 파라미터
+   * @param paramId 파라미터 ID 문자열 (예: "Param47")
+   * @param value 설정할 값
+   */
+  public setBaseParameterValue(paramId: string, value: number): void {
+    const model: LAppModel = this._models.at(0);
+    if (!model) {
+      console.warn('[Manager] setBaseParameterValue: No model loaded yet');
+      return;
+    }
+
+    model.setBaseParameter(paramId, value);
+  }
+
+  /**
    * 매핑된 이름으로 모션 재생 (config.json의 motionMap 사용)
    * @param motionName 모션 이름 (예: "인사", "끄덕임")
    * @returns 재생 성공 여부
@@ -233,10 +250,43 @@ export class LAppLive2DManager {
 
   /**
    * Set external model configuration
+   * setparameter가 있으면 기본 파라미터로 저장
    */
   public setModelConfig(config: Live2DModelConfig): void {
     this._modelConfig = config;
+    
+    // setparameter가 있으면 기본 파라미터로 저장
+    if (config.setparameter) {
+      this._pendingBaseParameters = { ...config.setparameter };
+      console.log('[Manager] Pending base parameters saved:', this._pendingBaseParameters);
+      
+      // 모델이 이미 로드되어 있으면 바로 적용
+      this.applyPendingBaseParameters();
+    }
   }
+  
+  /**
+   * 대기 중인 기본 파라미터를 모델에 적용
+   */
+  private applyPendingBaseParameters(): void {
+    if (!this._pendingBaseParameters) return;
+    
+    const model: LAppModel = this._models.at(0);
+    if (!model) {
+      console.log('[Manager] Model not loaded yet, base parameters will be applied later');
+      return;
+    }
+    
+    console.log('[Manager] Applying pending base parameters to model');
+    for (const [paramId, value] of Object.entries(this._pendingBaseParameters)) {
+      model.setBaseParameter(paramId, value);
+    }
+    
+    // 적용 완료 후 초기화
+    this._pendingBaseParameters = null;
+  }
+  
+  private _pendingBaseParameters: { [key: string]: number } | null = null;
 
   /**
    * 립싱크 값 설정
@@ -325,6 +375,11 @@ export class LAppLive2DManager {
     const model: LAppModel = this._models.at(0);
 
     if (!model) return;
+    
+    // 대기 중인 기본 파라미터 적용 (모델 로드 완료 후)
+    if (this._pendingBaseParameters) {
+      this.applyPendingBaseParameters();
+    }
 
     if (model.getModel()) {
       if (model.getModel().getCanvasWidth() > 1.0 && width < height) {

@@ -663,7 +663,38 @@ export class LAppModel extends CubismUserModel {
   private _resources: Map<string, ArrayBuffer> | null = null;
   
   // ============================================================================
-  // 파라미터 부드러운 전환 (Lerp) 시스템
+  // 기본 파라미터 시스템 (config.json에서 설정, 감정 변경 시에도 유지)
+  // ============================================================================
+  private _baseParameters: Map<string, number> = new Map<string, number>();
+  
+  /**
+   * 기본 파라미터 설정 (config.json의 setparameter용)
+   * 감정 변경 시에도 유지됨
+   * @param id 파라미터 ID
+   * @param value 파라미터 값
+   */
+  public setBaseParameter(id: string, value: number): void {
+    this._baseParameters.set(id, value);
+    console.log(`[LAppModel] Base parameter set: ${id} = ${value}`);
+  }
+  
+  /**
+   * 기본 파라미터 삭제
+   * @param id 파라미터 ID
+   */
+  public removeBaseParameter(id: string): void {
+    this._baseParameters.delete(id);
+  }
+  
+  /**
+   * 모든 기본 파라미터 초기화
+   */
+  public clearBaseParameters(): void {
+    this._baseParameters.clear();
+  }
+  
+  // ============================================================================
+  // 파라미터 부드러운 전환 (Lerp) 시스템 - 감정용
   // ============================================================================
   private _parameterTargets: Map<string, number> = new Map<string, number>();   // 목표 값
   private _parameterCurrents: Map<string, number> = new Map<string, number>();  // 현재 값
@@ -715,10 +746,17 @@ export class LAppModel extends CubismUserModel {
   
   /**
    * 파라미터 전환 업데이트 (update()에서 호출)
-   * 현재 값을 목표 값으로 lerp로 전환
-   * 목표값이 0이고 전환 완료 시 맵에서 제거 (다른 시스템이 제어 가능하도록)
+   * 1. 기본 파라미터(config.json) 먼저 적용
+   * 2. 감정 파라미터를 lerp로 적용 (기본 파라미터 위에 덮어씀)
    */
   private updateParameterTransitions(deltaTimeSeconds: number): void {
+    // 1. 기본 파라미터 먼저 적용 (항상 유지됨)
+    this._baseParameters.forEach((value, id) => {
+      const cubismId = CubismFramework.getIdManager().getId(id);
+      this._model.setParameterValueById(cubismId, value, 1.0);
+    });
+    
+    // 2. 감정 파라미터 lerp 적용 (기본 파라미터 위에 덮어씀)
     if (this._parameterTargets.size === 0) return;
     
     const lerpFactor = Math.min(1.0, this._parameterTransitionSpeed * deltaTimeSeconds);

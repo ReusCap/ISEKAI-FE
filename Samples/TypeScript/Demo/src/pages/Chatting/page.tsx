@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from '@emotion/styled';
 import Live2DViewer from '@/components/Live2DViewer';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -9,30 +8,27 @@ import ChatInput from '@/components/ChatInput';
 import OverlayButton from '@/components/OverlayButton';
 import OverlayContainer from '@/components/OverlayContainer';
 import { FONTS } from '@/constants';
-import { EmotionType } from '@/types/chat';
-import { getTicketForWebSocket } from './api/getTicketForWebSocket';
-import { useChatMessages } from './hooks/useChatMessages';
-
-// 웹소켓 감정 타입 → Live2D 감정 이름 매핑
-const EMOTION_MAP: Record<EmotionType, string> = {
-  SAD: '슬픔',
-  SHY: '부끄러움',
-  HAPPY: '행복',
-  ANGRY: '화남',
-  NEUTRAL: '중립',
-  SURPRISED: '놀람',
-  DESPISE: '경멸'
-};
+import { ChatMessage } from '@/types/chat';
+import { Character } from '@/types/character';
 
 const ChattingPage = () => {
   const wsBaseUrl = import.meta.env.VITE_WS_SERVER_URL;
   const navigate = useNavigate();
-  const { characterId } = useParams<{ characterId: string }>();
+  const location = useLocation();
+  
+  // Character 정보 가져오기
+  const character = location.state?.character as Character | undefined;
 
-  // 채팅 메시지 관리 (커스텀 훅으로 분리)
-  const { messages, isBotResponding, currentEmotion, handlers } = useChatMessages();
+  // Character 정보가 없으면 홈으로 리다이렉트
+  useEffect(() => {
+    if (!character) {
+      console.warn('캐릭터 정보가 없습니다. 홈으로 이동합니다.');
+      navigate('/');
+    }
+  }, [character, navigate]);
 
-  // UI 상태
+  // React 상태로 채팅 메시지 관리
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStarted, setIsStarted] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
@@ -43,10 +39,14 @@ const ChattingPage = () => {
     staleTime: 1000 * 60, // 1분간 캐시 유지 (선택사항)
   });
 
-  // 2. URL 구성 (티켓과 characterId가 있을 때만 생성)
-  const fullWsUrl = (characterId && ticket && wsBaseUrl) 
-    ? `${wsBaseUrl}/characters/${characterId}/voice?ticket=${ticket}`
-    : '';
+  // WebSocket 이벤트 핸들러
+  const handleUserSTT = useCallback((text: string) => {
+    addMessage('user', text);
+  }, [addMessage]);
+
+  const handleSubtitle = useCallback((text: string) => {
+    addMessage('ai', text);
+  }, [addMessage]);
 
   // WebSocket 연결 및 오디오 스트리밍
   const { getCurrentRms, isServerReady } = useWebSocket({
@@ -89,10 +89,15 @@ const ChattingPage = () => {
     checkPermission();
   }, []);
 
+  // Character가 없으면 빈 화면 반환 (리다이렉트 중)
+  if (!character) {
+    return null;
+  }
+
   return (
     <PageContainer>
-      {/* 1. 배경 이미지 */}
-      <Background />
+      {/* 1. 배경 이미지 - Character의 backgroundUrl 사용 */}
+      <Background $backgroundUrl={character.backgroundUrl} />
 
       {/* 2. 뒤로가기 버튼 */}
       <BackButtonWrapper>
@@ -110,11 +115,11 @@ const ChattingPage = () => {
         </OverlayContainer>
       </ZoomControlsWrapper>
 
-      {/* 4. Live2D 컨테이너 (좌측 50%) */}
+      {/* 4. Live2D 컨테이너 (좌측 50%) - Character의 live2dModelUrl 사용 */}
       <Live2DContainer>
         <Live2DWrapper>
           <Live2DViewer 
-            modelUrl="/Resources/live2d_model.zip" 
+            modelUrl={character.live2dModelUrl}
             getLipSyncValue={getCurrentRms} 
             zoom={zoomLevel}
             expression={EMOTION_MAP[currentEmotion]}
@@ -147,13 +152,13 @@ const PageContainer = styled.section`
   background-color: #000;
 `;
 
-const Background = styled.div`
+const Background = styled.div<{ $backgroundUrl?: string }>`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/Resources/anime-school-background.jpg');
+  background-image: url(${props => props.$backgroundUrl || '/Resources/anime-school-background.jpg'});
   background-size: cover;
   background-position: center;
   filter: blur(3px) brightness(1);

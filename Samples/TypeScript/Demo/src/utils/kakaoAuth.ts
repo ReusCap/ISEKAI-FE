@@ -1,3 +1,5 @@
+import { clearUserInfo } from "./userStorage";
+
 const API_URL = import.meta.env.VITE_API_URL;
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL
 
@@ -20,6 +22,7 @@ export const kakaoLogout = () => {
   // 로컬 스토리지에서 토큰 제거
   localStorage.removeItem('accessToken');
   localStorage.removeItem('userInfo');
+  clearUserInfo();
 };
 
 export const getAccessToken = (): string | null => {
