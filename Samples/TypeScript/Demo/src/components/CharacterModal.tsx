@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import styled from 'styled-components';
 import { COLORS, LAYOUT, FONTS } from '@/constants';
 import { Character } from '@/types/character';
+import { isLoggedIn } from '@/utils/kakaoAuth';
 
 interface CharacterModalProps {
   character: Character | null;
@@ -17,6 +18,7 @@ export const CharacterModal: React.FC<CharacterModalProps> = ({
   onClose,
   onStartChat,
 }) => {
+  const loggedIn = isLoggedIn();
   // ESC 키로 모달 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -74,9 +76,15 @@ export const CharacterModal: React.FC<CharacterModalProps> = ({
             <ModalDescription>{character.persona}</ModalDescription>
           </ModalTextContent>
 
-          <StartChatButton onClick={handleStartChat}>
-            대화 시작하기
-          </StartChatButton>
+          {loggedIn ? (
+            <StartChatButton onClick={handleStartChat}>
+              대화 시작하기
+            </StartChatButton>
+          ) : (
+            <LoginRequiredButton onClick={handleStartChat}>
+              로그인이 필요한 서비스입니다
+            </LoginRequiredButton>
+          )}
         </ModalContent>
       </ModalContainer>
     </ModalOverlay>
@@ -205,6 +213,28 @@ const StartChatButton = styled.button`
 
   &:hover {
     background-color: ${COLORS.accent.secondary};
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const LoginRequiredButton = styled.button`
+  width: 100%;
+  padding: ${LAYOUT.spacing.md};
+  background-color: ${COLORS.text.disabled};
+  color: ${COLORS.text.secondary};
+  border: none;
+  border-radius: ${LAYOUT.borderRadius.lg};
+  font-size: ${FONTS.size.lg};
+  font-weight: ${FONTS.weight.semibold};
+  cursor: pointer;
+  transition: background-color 0.3s ease-out;
+
+  &:hover {
+    background-color: #444444;
+    color: #aaaaaa;
   }
 
   &:active {

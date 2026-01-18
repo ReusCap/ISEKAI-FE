@@ -16,11 +16,11 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
 
   return (
     <CardContainer onClick={handleClick}>
-      <CardImage $hasImage={!!character.thumbnailUrl}>
+      <CardImage>
         {character.thumbnailUrl ? (
           <img src={character.thumbnailUrl} alt={character.name} />
         ) : (
-          <span>{character.name}</span>
+          <Placeholder>{character.name[0]}</Placeholder>
         )}
       </CardImage>
       
@@ -37,7 +37,6 @@ const CardContainer = styled.div`
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
-  height: ${LAYOUT.card.height};
   display: flex;
   flex-direction: column;
 
@@ -47,50 +46,43 @@ const CardContainer = styled.div`
   }
 `;
 
-const CardImage = styled.div<{ $hasImage: boolean }>`
+const CardImage = styled.div`
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
   background-color: ${COLORS.card.bg};
   border-radius: ${LAYOUT.borderRadius.md};
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: ${COLORS.card.text};
-  font-weight: 600;
-  position: ${props => props.$hasImage ? 'relative' : 'static'};
-  overflow: hidden;
+  flex-shrink: 0;
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-
-  span {
-    user-select: none;
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 `;
 
-const Badge = styled.span`
-  position: absolute;
-  top: ${LAYOUT.spacing.xs};
-  right: ${LAYOUT.spacing.xs};
-  background-color: ${COLORS.accent.primary};
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
+const Placeholder = styled.span`
+  font-size: 48px;
+  font-weight: 700;
+  color: ${COLORS.accent.primary};
+  user-select: none;
+  position: relative;
+  z-index: 1;
 `;
 
 const CardContent = styled.div`
   padding: ${LAYOUT.spacing.sm};
-  flex: 1;
   display: flex;
   flex-direction: column;
   background-color: ${COLORS.card.bg};
+  min-height: 0;
 `;
 
 const CardTitle = styled.h3`
@@ -98,6 +90,10 @@ const CardTitle = styled.h3`
   font-weight: ${FONTS.weight.extrabold};
   color: ${COLORS.card.text};
   margin-bottom: ${LAYOUT.spacing.xs};
+  
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const CardDescription = styled.p`
@@ -106,4 +102,10 @@ const CardDescription = styled.p`
   color: ${COLORS.card.describe};
   line-height: 1.5;
   opacity: 0.8;
+  
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
