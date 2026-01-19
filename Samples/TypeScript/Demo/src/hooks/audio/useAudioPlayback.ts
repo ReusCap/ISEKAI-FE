@@ -10,7 +10,7 @@ interface UseAudioPlaybackReturn {
 /**
  * 오디오 재생을 관리하는 훅
  */
-export const useAudioPlayback = (playbackSampleRate = 48000): UseAudioPlaybackReturn => {
+export const useAudioPlayback = (playbackSampleRate = 24000): UseAudioPlaybackReturn => {
   const [isReady, setIsReady] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);

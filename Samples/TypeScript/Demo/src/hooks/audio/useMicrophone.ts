@@ -77,10 +77,8 @@ export const useMicrophone = ({
         if (event.data.type === 'stats') {
           setIsVoiceDetected(event.data.isActive);
         } else if (event.data.type === 'audio') {
-          // AudioWorklet에서 이미 VAD 처리됨
-          if (event.data.isActive) {
-            onAudioDataRef.current?.(event.data.buffer);
-          }
+          // AudioWorklet에서 이미 VAD 처리됨 (isActive일 때만 audio 메시지가 옴)
+          onAudioDataRef.current?.(event.data.buffer);
         }
       };
 

@@ -18,6 +18,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [inputValue, setInputValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // IME 조합 중(한글 입력 등)이면 무시 - 마지막 글자 중복 방지
+    if (e.nativeEvent.isComposing) return;
+    
     if (e.key === 'Enter' && inputValue.trim() !== '' && !disabled) {
       onSend(inputValue.trim());
       setInputValue('');
@@ -43,20 +46,21 @@ export default ChatInput;
 // --- Styled Components ---
 
 const InputWrapper = styled.div`
-  width: 100%;
-  margin-top: 20px;
+  flex: 1;
 `;
 
 const StyledInput = styled.input`
   width: 100%;
-  padding: 16px 24px;
-  border-radius: 30px;
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 26px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(0, 0, 0, 0.6);
   color: white;
   font-size: 16px;
   outline: none;
   backdrop-filter: blur(10px);
+  box-sizing: border-box;
 
   &:disabled {
     opacity: 0.5;
