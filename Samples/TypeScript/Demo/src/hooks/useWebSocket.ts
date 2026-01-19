@@ -16,6 +16,8 @@ interface UseWebSocketReturn {
   isVoiceDetected: boolean;
   error: Error | null;
   getCurrentRms: () => number;
+  sendTextMessage: (text: string) => void;
+  toggleMic: () => Promise<void>;
 }
 
 /**
@@ -91,6 +93,30 @@ export const useWebSocket = ({
   } = useMicrophone({
     onAudioData: handleAudioData
   });
+
+  // 텍스트 메시지 전송
+  const sendTextMessage = useCallback((text: string) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.warn('[WebSocket] 연결되지 않아 메시지를 보낼 수 없습니다.');
+      return;
+    }
+
+    const message = {
+      messageType: 'TEXT_MESSAGE',
+      content: {
+        '@type': 'textMessage',
+        text: text
+      }
+    };
+
+    try {
+      ws.send(JSON.stringify(message));
+      console.log('[WebSocket] 텍스트 메시지 전송:', text, message);
+    } catch (err) {
+      console.error('[WebSocket] 텍스트 메시지 전송 실패:', err);
+    }
+  }, []);
 
   // WebSocket 메시지 처리
   const handleMessage = useCallback(
@@ -195,13 +221,7 @@ export const useWebSocket = ({
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
-
-        // 마이크 시작
-        try {
-          await startMic();
-        } catch (err) {
-          console.error('[WebSocket] 마이크 시작 실패:', err);
-        }
+        // 마이크는 수동으로 시작 (버튼 클릭 시)
       };
 
       ws.onerror = event => {
@@ -241,6 +261,21 @@ export const useWebSocket = ({
     setIsConnected(false);
   }, [stopMic]);
 
+  // 마이크 토글 (켜기/끄기)
+  const toggleMic = useCallback(async () => {
+    if (isMicActive) {
+      stopMic();
+      console.log('[WebSocket] 마이크 중지');
+    } else {
+      try {
+        await startMic();
+        console.log('[WebSocket] 마이크 시작');
+      } catch (err) {
+        console.error('[WebSocket] 마이크 시작 실패:', err);
+      }
+    }
+  }, [isMicActive, startMic, stopMic]);
+
   // 자동 연결
   useEffect(() => {
     if (autoConnect && serverUrl) {
@@ -258,6 +293,8 @@ export const useWebSocket = ({
     isMicActive,
     isVoiceDetected,
     error,
-    getCurrentRms
+    getCurrentRms,
+    sendTextMessage,
+    toggleMic
   };
 };
