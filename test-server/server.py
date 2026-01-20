@@ -156,7 +156,7 @@ class VoiceStreamServer:
 
     async def start(self):
         """서버 시작"""
-        print(f"[서버 시작] wss://{HOST}:{PORT}")
+        print(f"[서버 시작] ws://{HOST}:{PORT}")
         print(f"[WAV 파일] {self.wav_file}")
         async with websockets.serve(self.handle_client, HOST, PORT):
             await asyncio.Future()  # 무한 대기
