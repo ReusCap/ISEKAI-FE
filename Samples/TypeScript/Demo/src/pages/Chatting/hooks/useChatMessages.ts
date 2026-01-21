@@ -22,6 +22,7 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9
 export const useChatMessages = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isBotResponding, setIsBotResponding] = useState(false);
+  const [isBotThinking, setIsBotThinking] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('NEUTRAL');
   
   // 확정된 사용자 텍스트 (USER_SUBTITLE_COMPLETE로 확정된 부분)
@@ -115,6 +116,14 @@ export const useChatMessages = () => {
   }, []);
 
   /**
+   * BOT_IS_THINKING: 봇이 생각 중
+   */
+  const handleBotIsThinking = useCallback(() => {
+    console.log('[useChatMessages] 봇 생각 중');
+    setIsBotThinking(true);
+  }, []);
+
+  /**
    * TURN_COMPLETE: 대화 턴 완료
    * 봇 스트리밍 → 완료 메시지로 교체
    */
@@ -126,6 +135,7 @@ export const useChatMessages = () => {
     ]);
     clearStreamingMessages();
     setIsBotResponding(false);
+    setIsBotThinking(false);
   }, []);
 
   const handleEmotion = useCallback((emotion: EmotionType) => {
@@ -150,6 +160,7 @@ export const useChatMessages = () => {
   return {
     messages,
     isBotResponding,
+    isBotThinking,
     currentEmotion,
     addUserTextMessage,
     
@@ -157,6 +168,7 @@ export const useChatMessages = () => {
       onServerReady: handleServerReady,
       onUserSubtitleChunk: handleUserSubtitleChunk,
       onUserSentence: handleUserSentence,
+      onBotIsThinking: handleBotIsThinking,
       onTurnComplete: handleTurnComplete,
       onEmotion: handleEmotion,
       onInterrupted: handleInterrupted,

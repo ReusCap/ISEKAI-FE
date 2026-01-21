@@ -19,7 +19,7 @@ const Live2DViewer = ({
   modelUrl, 
   getLipSyncValue, 
   expression="중립",
-  motion="대기",
+  motion,
   zoom=1.0
 }: Live2DViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,10 +75,13 @@ const Live2DViewer = ({
 
   // 기본 motionMap (하드코딩)
   const DEFAULT_MOTION_MAP = {
-    "기본": { group: "idle", index: 0 },
-    "듣기": { group: "listen", index: 1 },
-    "말하기": { group: "speak", index: 1 },
-    "생각": { group: "think", index: 0 }
+    "대기1": { group: "idle", index: 0 },
+    "대기2": { group: "idle", index: 1 }, 
+    "대기3": { group: "idle", index: 2 }, //정적인 동작 부끄러움,경멸에 사용
+    "듣기": { group: "listen", index: 1 }, //고개를 끄덕이며 듣기 동작 중립, 행복 일 때 사용
+    "말하기1": { group: "speak", index: 0 }, 
+    "말하기2": { group: "speak", index: 1 }, 
+    "생각": { group: "think", index: 0 } 
   };
 
   // config 적용 (ZIP 내부 config.json 또는 기본값 사용)
@@ -103,10 +106,10 @@ const Live2DViewer = ({
         }
       }
 
-      // config.json에 motionMap이 없으면 기본값 병합
-      if (configData && !configData.motionMap) {
+      // motionMap이 없으면 기본값 사용
+      if (!configData.motionMap) {
         configData.motionMap = DEFAULT_MOTION_MAP;
-        console.log('[Live2DViewer] motionMap not found in config, using default');
+        console.log('[Live2DViewer] motionMap not found, using default');
       }
 
       // config 전체를 manager에 전달 (motionMap 포함)

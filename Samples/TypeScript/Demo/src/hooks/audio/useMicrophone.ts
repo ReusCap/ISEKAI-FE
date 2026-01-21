@@ -7,6 +7,8 @@ interface UseMicrophoneOptions {
 
 interface UseMicrophoneReturn {
   isActive: boolean;
+  isSpeaking: boolean;
+  getMicRms: () => number;
   start: () => Promise<void>;
   stop: () => Promise<void>;
 }
@@ -20,11 +22,19 @@ export const useMicrophone = ({
   onAudioData
 }: UseMicrophoneOptions = {}): UseMicrophoneReturn => {
   const [isActive, setIsActive] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const onAudioDataRef = useRef(onAudioData);
+  const micRmsRef = useRef(0);
+  const speakingTimeoutRef = useRef<number | null>(null);
+
+  // 발화 감지 임계값 (0.01 = 1%)
+  const SPEAKING_THRESHOLD = 0.01;
+  // 발화 종료 지연 시간 (ms)
+  const SPEAKING_TIMEOUT = 300;
 
   // 콜백 ref 업데이트
   useEffect(() => {
@@ -63,10 +73,32 @@ export const useMicrophone = ({
       const workletNode = new AudioWorkletNode(audioContext, 'vad-audio-processor');
       workletNodeRef.current = workletNode;
 
-      // 메시지 핸들러 - 오디오 데이터만 처리
+      // 메시지 핸들러 - 오디오 데이터 처리 및 RMS 계산
       workletNode.port.onmessage = event => {
         if (event.data.type === 'audio') {
-          onAudioDataRef.current?.(event.data.buffer);
+          const buffer = event.data.buffer as Float32Array;
+          onAudioDataRef.current?.(buffer);
+
+          // RMS 계산 (마이크 입력 볼륨)
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i++) {
+            sum += buffer[i] * buffer[i];
+          }
+          const rms = Math.sqrt(sum / buffer.length);
+          micRmsRef.current = rms;
+
+          // 발화 감지
+          if (rms > SPEAKING_THRESHOLD) {
+            setIsSpeaking(true);
+            // 기존 타임아웃 취소
+            if (speakingTimeoutRef.current) {
+              clearTimeout(speakingTimeoutRef.current);
+            }
+            // 새 타임아웃 설정
+            speakingTimeoutRef.current = window.setTimeout(() => {
+              setIsSpeaking(false);
+            }, SPEAKING_TIMEOUT);
+          }
         }
       };
 
@@ -97,6 +129,13 @@ export const useMicrophone = ({
       audioContextRef.current = null;
     }
 
+    // 타임아웃 정리
+    if (speakingTimeoutRef.current) {
+      clearTimeout(speakingTimeoutRef.current);
+      speakingTimeoutRef.current = null;
+    }
+
+    setIsSpeaking(false);
     setIsActive(false);
     console.log('[Microphone] 중지됨');
   }, []);
@@ -110,5 +149,8 @@ export const useMicrophone = ({
     };
   }, []);
 
-  return { isActive, start, stop };
+  // 마이크 RMS 값 가져오기
+  const getMicRms = useCallback(() => micRmsRef.current, []);
+
+  return { isActive, isSpeaking, getMicRms, start, stop };
 };

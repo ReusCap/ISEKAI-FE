@@ -3,6 +3,7 @@ import { parseWavHeader, int16ToFloat32, calculateRms } from './audioUtils';
 
 interface UseAudioPlaybackReturn {
   isReady: boolean;
+  isPlaying: boolean;
   playAudio: (buffer: ArrayBuffer) => void;
   getCurrentRms: () => number;
 }
@@ -12,12 +13,14 @@ interface UseAudioPlaybackReturn {
  */
 export const useAudioPlayback = (playbackSampleRate = 24000): UseAudioPlaybackReturn => {
   const [isReady, setIsReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const nextStartTimeRef = useRef(0);
   const audioSettingsRef = useRef({ channels: 1, sampleRate: 24000 });
+  const activeSourcesRef = useRef(0); // 현재 재생 중인 오디오 소스 개수
 
   // 컴포넌트 마운트 시 즉시 초기화
   useEffect(() => {
@@ -110,10 +113,24 @@ export const useAudioPlayback = (playbackSampleRate = 24000): UseAudioPlaybackRe
     source.buffer = audioBuffer;
     source.connect(analyserNode);
     analyserNode.connect(audioContext.destination);
+
+    // 오디오 재생 상태 추적
+    source.onended = () => {
+      activeSourcesRef.current = Math.max(0, activeSourcesRef.current - 1);
+      if (activeSourcesRef.current === 0) {
+        setIsPlaying(false);
+        console.log('[AudioPlayback] 모든 오디오 재생 완료');
+      }
+    };
+
     source.start(startTime);
+    activeSourcesRef.current++;
+    if (!isPlaying) {
+      setIsPlaying(true);
+    }
 
     console.log(
-      `[AudioPlayback] 재생: ${startTime.toFixed(3)}초 시작, ${audioBuffer.duration.toFixed(3)}초 길이, 다음: ${(startTime + audioBuffer.duration).toFixed(3)}초`
+      `[AudioPlayback] 재생: ${startTime.toFixed(3)}초 시작, ${audioBuffer.duration.toFixed(3)}초 길이, 다음: ${(startTime + audioBuffer.duration).toFixed(3)}초, 활성 소스: ${activeSourcesRef.current}`
     );
 
     nextStartTimeRef.current = startTime + audioBuffer.duration;
@@ -125,5 +142,5 @@ export const useAudioPlayback = (playbackSampleRate = 24000): UseAudioPlaybackRe
     return calculateRms(analyserNodeRef.current, dataArrayRef.current);
   }, []);
 
-  return { isReady, playAudio, getCurrentRms };
+  return { isReady, isPlaying, playAudio, getCurrentRms };
 };
