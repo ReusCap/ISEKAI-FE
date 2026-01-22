@@ -49,18 +49,24 @@ const ChattingPage = () => {
   const live2dModelUrl = character?.live2dModelUrl || DEFAULT_LIVE2D_MODEL;
 
   // 채팅 메시지 관리 (커스텀 훅으로 분리)
-  const { messages, isBotResponding, isBotThinking, currentEmotion, addUserTextMessage, handlers } = useChatMessages();
+  const { messages, isBotResponding, isBotThinking, currentEmotion, addUserTextMessage, loadChatHistory, handlers } = useChatMessages();
 
   // UI 상태
   const [zoomLevel, setZoomLevel] = useState(1.0);
 
   // 1. WS 티켓 발급 (React Query 사용)
   const { data: ticket, isLoading: isTicketLoading } = useQuery({
-    queryKey: ['ws-ticket'],
+    queryKey: ['ws-ticket', characterId],
     queryFn: getTicketForWebSocket,
-    staleTime: 1000 * 60, // 1분간 캐시 유지
-    retry: 3,
+    staleTime: 0, // 매번 재요청 (티켓 재사용 방지)
+    gcTime: 0, // 캐시 저장 안 함 (v5 기준)
+    refetchOnWindowFocus: false, // 포커스 시 재요청 금지 (채팅 중 끊김 방지)
   });
+
+  // 채팅 내역 불러오기
+  useEffect(() => {
+      loadChatHistory(characterId);
+  }, [characterId]);
 
   // 2. URL 구성 (티켓과 characterId가 있을 때만 생성)
   const fullWsUrl = (characterId && ticket && wsBaseUrl) 

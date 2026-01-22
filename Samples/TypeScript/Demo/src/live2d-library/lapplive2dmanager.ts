@@ -227,7 +227,8 @@ export class LAppLive2DManager {
       return false;
     }
     
-    this.startMotion(motionInfo.group, motionInfo.index, motionInfo.priority ?? 2);
+    // React 상태 변경에 의한 모션은 무조건 즉시 반영되어야 하므로 최우선 순위(Force)로 재생
+    this.startMotion(motionInfo.group, motionInfo.index, LAppDefine.PriorityForce);
     return true;
   }
 
