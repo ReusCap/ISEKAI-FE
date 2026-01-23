@@ -21,7 +21,7 @@ const Home: React.FC<HomeProps> = ({
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, isLoading, error } = useCharacters({ page: 1, size: 12 });
+  const { data, isLoading, error } = useCharacters({ page: 1, size: 100 });
 
   const characters: Character[] = data?.content
     ? data.content
