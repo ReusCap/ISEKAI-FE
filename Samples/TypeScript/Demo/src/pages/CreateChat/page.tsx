@@ -1,5 +1,6 @@
 import styled from '@emotion/styled';
 import { useForm, FormProvider } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { CreateChatFormData } from './types/form';
 import { Navbar } from '@/components/Navbar'
 import { COLORS, LAYOUT, FONTS } from '@/constants';
@@ -14,6 +15,7 @@ import { useSaveCharacter } from './hooks';
 import { useRef } from 'react';
 
 const CreateChatPage = () => {
+  const navigate = useNavigate();
   const uuidRef = useRef(crypto.randomUUID());
 
   const methods = useForm<CreateChatFormData>({
@@ -39,6 +41,7 @@ const CreateChatPage = () => {
       });
       console.log('캐릭터 저장 성공:', result);
       alert('캐릭터가 성공적으로 저장되었습니다!');
+      navigate('/');
     } catch (error) {
       console.error('캐릭터 저장 실패:', error);
       alert('캐릭터 저장에 실패했습니다.');
