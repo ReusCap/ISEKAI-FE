@@ -77,7 +77,7 @@ npm run build
 ### WebSocket 서버 설정
 `.env` 파일(또는 환경 변수)에 WebSocket 서버 주소를 설정해야 합니다.
 ```env
-VITE_WS_SERVER_URL=ws://your-websocket-server-url
+VITE_WS_SERVER_URL=wss://your-websocket-server-url
 ```
 
 ### 모델 및 뷰 설정
