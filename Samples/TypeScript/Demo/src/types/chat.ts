@@ -17,6 +17,7 @@ export type WebSocketMessageType =
   | 'SERVER_READY'
   | 'USER_SUBTITLE_CHUNK'
   | 'USER_SUBTITLE_COMPLETE'
+  | 'BOT_IS_THINKING'
   | 'TURN_COMPLETE'
   | 'EMOTION'
   | 'INTERRUPTED'
@@ -76,6 +77,7 @@ export type WebSocketMessage =
   | { messageType: 'SERVER_READY'; content: ServerReadyContent }
   | { messageType: 'USER_SUBTITLE_CHUNK'; content: SubtitleContent }
   | { messageType: 'USER_SUBTITLE_COMPLETE'; content: SubtitleContent }
+  | { messageType: 'BOT_IS_THINKING'; content: { '@type': 'botIsThinking' } }
   | { messageType: 'TURN_COMPLETE'; content: TurnCompleteContent }
   | { messageType: 'EMOTION'; content: EmotionContent }
   | { messageType: 'INTERRUPTED'; content: InterruptedContent }
@@ -88,6 +90,7 @@ export interface WebSocketEventHandlers {
   onServerReady?: () => void;
   onUserSubtitleChunk?: (text: string) => void;
   onUserSentence?: (text: string) => void;
+  onBotIsThinking?: () => void;
   onTurnComplete?: (user: string, bot: string) => void;
   onEmotion?: (emotion: EmotionType) => void;
   onInterrupted?: () => void;

@@ -13,6 +13,8 @@ interface UseWebSocketReturn {
   isConnected: boolean;
   isServerReady: boolean;
   isMicActive: boolean;
+  isAudioPlaying: boolean;
+  isUserSpeaking: boolean;
   error: Error | null;
   getCurrentRms: () => number;
   sendTextMessage: (text: string) => void;
@@ -29,6 +31,7 @@ export const useWebSocket = ({
   onServerReady,
   onUserSubtitleChunk,
   onUserSentence,
+  onBotIsThinking,
   onTurnComplete,
   onEmotion,
   onInterrupted,
@@ -47,6 +50,7 @@ export const useWebSocket = ({
     onServerReady,
     onUserSubtitleChunk,
     onUserSentence,
+    onBotIsThinking,
     onTurnComplete,
     onEmotion,
     onInterrupted,
@@ -57,15 +61,16 @@ export const useWebSocket = ({
       onServerReady,
       onUserSubtitleChunk,
       onUserSentence,
+      onBotIsThinking,
       onTurnComplete,
       onEmotion,
       onInterrupted,
       onError
     };
-  }, [onServerReady, onUserSubtitleChunk, onUserSentence, onTurnComplete, onEmotion, onInterrupted, onError]);
+  }, [onServerReady, onUserSubtitleChunk, onUserSentence, onBotIsThinking, onTurnComplete, onEmotion, onInterrupted, onError]);
 
   // 오디오 재생 훅
-  const { playAudio , getCurrentRms } = useAudioPlayback();
+  const { playAudio, isPlaying: isAudioPlaying, getCurrentRms } = useAudioPlayback();
 
   // 마이크 데이터 전송 콜백
   const handleAudioData = useCallback((data: Float32Array) => {
@@ -83,6 +88,7 @@ export const useWebSocket = ({
   // 마이크 훅
   const {
     isActive: isMicActive,
+    isSpeaking: isUserSpeaking,
     start: startMic,
     stop: stopMic
   } = useMicrophone({
@@ -142,6 +148,11 @@ export const useWebSocket = ({
 
             case 'USER_SUBTITLE_COMPLETE':
               handlersRef.current.onUserSentence?.(message.content.text);
+              break;
+
+            case 'BOT_IS_THINKING':
+              console.log('[WebSocket] 봇 생각 중');
+              handlersRef.current.onBotIsThinking?.();
               break;
 
             case 'TURN_COMPLETE':
@@ -282,6 +293,8 @@ export const useWebSocket = ({
     isConnected,
     isServerReady,
     isMicActive,
+    isAudioPlaying,
+    isUserSpeaking,
     error,
     getCurrentRms,
     sendTextMessage,

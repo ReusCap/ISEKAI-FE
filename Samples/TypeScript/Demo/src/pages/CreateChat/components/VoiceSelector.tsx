@@ -1,53 +1,97 @@
 import styled from '@emotion/styled';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { VoiceType, VOICE_OPTIONS } from '../types';
 import { CreateChatFormData } from '../types/form';
 import { COLORS, FONTS, LAYOUT } from '@/constants';
 
 export const VoiceSelector = () => {
-  const { watch, setValue } = useFormContext<CreateChatFormData>();
-  const [playingVoice, setPlayingVoice] = useState<VoiceType | null>(null);
-
-  const selectedVoice = watch('voice') as VoiceType;
-
-  const handleVoiceSelect = (voiceType: VoiceType) => {
-    if (playingVoice === voiceType) {
-      setPlayingVoice(null);
-    } else {
-      setPlayingVoice(voiceType);
-      setValue('voice', voiceType);
-    }
+    const { watch, setValue } = useFormContext<CreateChatFormData>();
+    const [playingVoice, setPlayingVoice] = useState<VoiceType | null>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+    const selectedVoice = watch('voice') as VoiceType;
+  
+    const handleVoiceSelect = (voiceType: VoiceType) => {
+      // If clicking the current playing voice, stop it.
+      if (playingVoice === voiceType) {
+        setPlayingVoice(null);
+      } else {
+        // Play the new voice
+        setPlayingVoice(voiceType);
+        setValue('voice', voiceType);
+      }
+    };
+  
+    useEffect(() => {
+      // Stop current audio if strictly playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+  
+      if (playingVoice) {
+        let fileName = '';
+        switch (playingVoice) {
+          case 'cute':
+            fileName = 'cute_voice.wav';
+            break;
+          case 'innocent':
+            fileName = 'cool_voice.wav';
+            break;
+          case 'sexy':
+            fileName = 'sexy_voice.wav';
+            break;
+        }
+  
+        if (fileName) {
+          const audio = new Audio(`/voice/${fileName}`);
+          audioRef.current = audio;
+          
+          audio.onended = () => {
+            setPlayingVoice(null);
+          };
+  
+          audio.play().catch(console.error);
+        }
+      }
+  
+      // Cleanup function to stop audio when component unmounts or playingVoice changes
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+      };
+    }, [playingVoice]);
+  
+    return (
+      <FormGroup>
+        <FormLabel>목소리</FormLabel>
+        <VoiceSelection>
+          {VOICE_OPTIONS.map(voice => (
+            <VoiceBtn
+              key={voice.type}
+              type="button"
+              $active={selectedVoice === voice.type}
+              onClick={() => handleVoiceSelect(voice.type)}
+            >
+              <VoiceIcon>
+                {playingVoice === voice.type ? (
+                  <PauseIcon>
+                    <PauseBar />
+                    <PauseBar />
+                  </PauseIcon>
+                ) : (
+                  <PlayIcon />
+                )}
+              </VoiceIcon>
+              {voice.label}
+            </VoiceBtn>
+          ))}
+        </VoiceSelection>
+      </FormGroup>
+    );
   };
-
-  return (
-    <FormGroup>
-      <FormLabel>목소리</FormLabel>
-      <VoiceSelection>
-        {VOICE_OPTIONS.map(voice => (
-          <VoiceBtn
-            key={voice.type}
-            type="button"
-            $active={selectedVoice === voice.type}
-            onClick={() => handleVoiceSelect(voice.type)}
-          >
-            <VoiceIcon>
-              {playingVoice === voice.type ? (
-                <PauseIcon>
-                  <PauseBar />
-                  <PauseBar />
-                </PauseIcon>
-              ) : (
-                <PlayIcon />
-              )}
-            </VoiceIcon>
-            {voice.label}
-          </VoiceBtn>
-        ))}
-      </VoiceSelection>
-    </FormGroup>
-  );
-};
 
 // Styled Components
 const FormGroup = styled.div`

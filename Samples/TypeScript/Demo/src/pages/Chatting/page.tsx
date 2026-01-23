@@ -49,18 +49,24 @@ const ChattingPage = () => {
   const live2dModelUrl = character?.live2dModelUrl || DEFAULT_LIVE2D_MODEL;
 
   // 채팅 메시지 관리 (커스텀 훅으로 분리)
-  const { messages, isBotResponding, currentEmotion, addUserTextMessage, handlers } = useChatMessages();
+  const { messages, isBotResponding, isBotThinking, currentEmotion, addUserTextMessage, loadChatHistory, handlers } = useChatMessages();
 
   // UI 상태
-  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [zoomLevel, setZoomLevel] = useState(2.5);
 
   // 1. WS 티켓 발급 (React Query 사용)
   const { data: ticket, isLoading: isTicketLoading } = useQuery({
-    queryKey: ['ws-ticket'],
+    queryKey: ['ws-ticket', characterId],
     queryFn: getTicketForWebSocket,
-    staleTime: 1000 * 60, // 1분간 캐시 유지
-    retry: 3,
+    staleTime: 0, // 매번 재요청 (티켓 재사용 방지)
+    gcTime: 0, // 캐시 저장 안 함 (v5 기준)
+    refetchOnWindowFocus: false, // 포커스 시 재요청 금지 (채팅 중 끊김 방지)
   });
+
+  // 채팅 내역 불러오기
+  useEffect(() => {
+      loadChatHistory(characterId);
+  }, [characterId]);
 
   // 2. URL 구성 (티켓과 characterId가 있을 때만 생성)
   const fullWsUrl = (characterId && ticket && wsBaseUrl) 
@@ -73,6 +79,8 @@ const ChattingPage = () => {
     isServerReady, 
     isConnected,
     isMicActive,
+    isAudioPlaying,
+    isUserSpeaking,
     sendTextMessage,
     toggleMic
   } = useWebSocket({
@@ -80,6 +88,36 @@ const ChattingPage = () => {
     autoConnect: true,
     ...handlers
   });
+
+  // 오디오 재생 상태, 사용자 발화 상태, 감정에 따른 모션 결정
+  // 우선순위: 캐릭터 말하기 > 사용자 말하기(듣기) > 대기
+  const currentMotion = React.useMemo(() => {
+    // 1. 캐릭터가 말할 때 (오디오 재생 중)
+    if (isAudioPlaying) {
+      console.log('말하기 모션 재생');
+      return Math.random() < 0.5 ? '말하기1' : '말하기2';
+    }
+    // 2. 사용자가 말할 때 (마이크 입력 감지)
+    if (isUserSpeaking) {
+      console.log('듣기 모션 재생');
+      return '듣기';
+    }
+
+    // 4. BOT_IS_THINKING 이후부터 말하기 전까지 생각하는 모션 중립, 행복, 놀람 시 에만
+    if (isBotThinking && (currentEmotion === 'NEUTRAL' || currentEmotion === 'HAPPY' || currentEmotion === 'SURPRISED')) {
+      console.log('생각 모션 재생');
+      return '생각';
+    }
+
+    // 3. 대기 상태: 감정에 따라 결정
+    if (currentEmotion === 'SHY' || currentEmotion === 'DESPISE') {
+      console.log('대기3 모션 재생');
+      return '대기3'; // 정적인 동작 (부끄러움, 경멸)
+    }
+
+    // 그 외에는 대기1, 대기2 랜덤
+    return Math.random() < 0.5 ? '대기1' : '대기2';
+  }, [isAudioPlaying, isUserSpeaking, isBotThinking, currentEmotion]);
 
   // 사용자 텍스트 입력 처리
   const handleSendMessage = useCallback(
@@ -170,6 +208,7 @@ const ChattingPage = () => {
             getLipSyncValue={getCurrentRms} 
             zoom={zoomLevel}
             expression={EMOTION_MAP[currentEmotion]}
+            motion={currentMotion}
           />
         </Live2DWrapper>
         

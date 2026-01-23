@@ -11,8 +11,8 @@ export const LAYOUT = {
   },
 
   preview: {
-    appearanceMaxWidth: '300px',
-    backgroundMaxWidth: '500px',
+    appearanceMaxWidth: '500px',
+    backgroundMaxWidth: '800px',
   },
   
   // 간격 (spacing)

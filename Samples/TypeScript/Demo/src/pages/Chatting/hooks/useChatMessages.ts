@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { ChatMessage, EmotionType } from '@/types/chat';
+import { getChatHistory } from '@/api/chat';
 
 /** 스트리밍 메시지 ID 상수 */
 const STREAMING_USER_ID = 'streaming-user';
@@ -22,7 +23,9 @@ const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9
 export const useChatMessages = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isBotResponding, setIsBotResponding] = useState(false);
+  const [isBotThinking, setIsBotThinking] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('NEUTRAL');
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   
   // 확정된 사용자 텍스트 (USER_SUBTITLE_COMPLETE로 확정된 부분)
   const confirmedUserTextRef = useRef('');
@@ -57,6 +60,37 @@ export const useChatMessages = () => {
       m => m.id !== STREAMING_USER_ID && m.id !== STREAMING_BOT_ID
     ));
     confirmedUserTextRef.current = '';
+  }, []);
+
+  // ========== API 호출 ==========
+
+  const loadChatHistory = useCallback(async (characterId: string) => {
+    setIsLoadingHistory(true);
+    try {
+      // page 1, size 100 (충분히 많이 가져오기)
+      // 필요하다면 나중에 무한 스크롤 등을 구현할 수 있음
+      const data = await getChatHistory(characterId, 1, 100);
+      
+      const historyMessages: ChatMessage[] = data.content.map((item, index) => {
+        const timestamp = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+        return {
+          id: `history-${timestamp}-${index}-${Math.random()}`, // 고유 ID 생성
+          type: item.speaker === 'USER' ? 'user' : 'ai',
+          text: item.content,
+          timestamp: timestamp,
+          status: 'complete'
+        };
+      });
+
+      // 기존 메시지 앞에 붙이기 (혹은 덮어쓰기?)
+      // 여기서는 초기 진입시 로드하므로 덮어쓰는게 나을 수도 있지만,
+      // 일단 useState 초기값이 [] 이므로 setMessages로 설정
+      setMessages(historyMessages);
+    } catch (error) {
+      console.error('[useChatMessages] 채팅 내역 불러오기 실패:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   }, []);
 
   // ========== WebSocket 이벤트 핸들러 ==========
@@ -115,6 +149,14 @@ export const useChatMessages = () => {
   }, []);
 
   /**
+   * BOT_IS_THINKING: 봇이 생각 중
+   */
+  const handleBotIsThinking = useCallback(() => {
+    console.log('[useChatMessages] 봇 생각 중');
+    setIsBotThinking(true);
+  }, []);
+
+  /**
    * TURN_COMPLETE: 대화 턴 완료
    * 봇 스트리밍 → 완료 메시지로 교체
    */
@@ -126,6 +168,7 @@ export const useChatMessages = () => {
     ]);
     clearStreamingMessages();
     setIsBotResponding(false);
+    setIsBotThinking(false);
   }, []);
 
   const handleEmotion = useCallback((emotion: EmotionType) => {
@@ -150,13 +193,17 @@ export const useChatMessages = () => {
   return {
     messages,
     isBotResponding,
+    isBotThinking,
     currentEmotion,
+    isLoadingHistory,
+    loadChatHistory,
     addUserTextMessage,
     
     handlers: {
       onServerReady: handleServerReady,
       onUserSubtitleChunk: handleUserSubtitleChunk,
       onUserSentence: handleUserSentence,
+      onBotIsThinking: handleBotIsThinking,
       onTurnComplete: handleTurnComplete,
       onEmotion: handleEmotion,
       onInterrupted: handleInterrupted,
