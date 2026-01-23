@@ -15,7 +15,7 @@ export const getCharacters = async (
   const response = await axiosClient.get<CharactersResponse>('/characters', {
     params: {
       page: params?.page ?? 0,
-      size: params?.size ?? 10
+      size: params?.size ?? 100
     }
   });
   return response.data;
